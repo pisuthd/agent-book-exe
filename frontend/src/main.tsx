@@ -2,10 +2,13 @@ import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import '@react95/core/GlobalStyle'
 import '@react95/core/themes/win95.css'
+import { AppSettingsProvider } from './context/AppSettingsContext.tsx'
 import App from './App.tsx'
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    <App />
+    <AppSettingsProvider>
+      <App />
+    </AppSettingsProvider>
   </StrictMode>,
 )
