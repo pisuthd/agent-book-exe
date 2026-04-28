@@ -1,4 +1,4 @@
-import { Modal } from '@react95/core';
+import { Modal, TitleBar } from '@react95/core';
 import type { Agent } from '../types';
 import { agents } from '../mockData';
 import { useAppSettings } from '../context/AppSettingsContext';
@@ -33,6 +33,7 @@ export function AgentsWindow({ onSelectAgent, onClose }: AgentsWindowProps) {
       icon={<span>🤖</span>}
       title="Agents"
       style={{ left: 100, top: 40, width: 620, height: 340 }}
+      titleBarOptions={<TitleBar.Close onClick={onClose} />}
       buttons={[{ value: 'Close', onClick: onClose }]}
     >
       <Modal.Content bg="white" style={{ overflow: 'auto' }}>

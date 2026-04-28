@@ -5,15 +5,25 @@ import {
   TaskBar,
   List,
   Tooltip,
+  TitleBar
 } from '@react95/core';
 import {
   Progman46,
   Shell3215,
-  Conflnk102,
-  Progman12,
-  Mcm401,
-  Url102,
-  Textchat2
+  FolderExe2,
+  FolderExe,
+  MicrosoftExchange,
+  MsDos,
+  MicrosoftNetwork,
+  WindowsExplorer,
+  FolderFile,
+  Settings,
+  FolderSettings,
+  FolderPrint,
+  FileFind,
+  HelpBook,
+  LoaderBat,
+  Computer3
 } from '@react95/icons';
 import type { Agent } from './types';
 import { agents as allAgents } from './mockData';
@@ -51,7 +61,7 @@ function App() {
     const audio = audioRef.current;
     audio.currentTime = 0;
     audio.volume = 0.5;
-    audio.play().catch(() => {});
+    audio.play().catch(() => { });
   }, []);
 
   const openWindow = useCallback((window: WindowId) => {
@@ -191,6 +201,7 @@ function App() {
           id="about"
           icon={<Progman46 variant="32x32_4" />}
           title="About AXLMarket"
+          titleBarOptions={<TitleBar.Close onClick={() => closeWindow('about')} />}
           buttons={[{ value: 'OK', onClick: () => closeWindow('about') }]}
           style={{
             left: 240,
@@ -251,8 +262,8 @@ function App() {
       {/* TaskBar */}
       <TaskBar
         list={
-          <List>
-            <List.Item>
+          <List width={'200px'}>
+            {/* <List.Item>
               <Frame style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                 <Progman12 variant="32x32_4" />
                  Trade
@@ -303,7 +314,45 @@ function App() {
                 <Progman46 variant="32x32_4" />
                 About AXLMarket...
               </Frame>
+            </List.Item> */}
+            <List.Item icon={<FolderExe2 variant="32x32_4" />}>
+              <List width={'200px'}>
+                <List.Item icon={<FolderExe variant="16x16_4" />}>
+                  Accessories
+                </List.Item>
+                <List.Item icon={<FolderExe variant="16x16_4" />}>StartUp</List.Item>
+                <List.Item icon={<MicrosoftExchange variant="16x16_4" />}>
+                  Microsoft Exchange
+                </List.Item>
+                <List.Item icon={<MsDos variant="16x16_32" />}>
+                  MS-DOS Prompt
+                </List.Item>
+                <List.Item icon={<MicrosoftNetwork variant="16x16_4" />}>
+                  The Microsoft Network
+                </List.Item>
+                <List.Item icon={<WindowsExplorer variant="16x16_4" />}>
+                  Windows Explorer
+                </List.Item>
+              </List>
+              Programs
             </List.Item>
+            <List.Item icon={<FolderFile variant="32x32_4" />}>Documents</List.Item>
+            <List.Item icon={<Settings variant="32x32_4" />}>
+              <List width={'200px'}>
+                <List.Item icon={<FolderSettings variant="16x16_4" />}>
+                  Control Panel
+                </List.Item>
+                <List.Item icon={<FolderPrint variant="16x16_4" />}>
+                  Printers
+                </List.Item>
+              </List>
+              Settings
+            </List.Item>
+            <List.Item icon={<FileFind variant="32x32_4" />}>Find</List.Item>
+            <List.Item icon={<HelpBook variant="32x32_4" />}>Help</List.Item>
+            <List.Item icon={<LoaderBat variant="32x32_4" />}>Run...</List.Item>
+            <List.Divider />
+            <List.Item icon={<Computer3 variant="32x32_4" />}>Shut Down...</List.Item>
           </List>
         }
       />

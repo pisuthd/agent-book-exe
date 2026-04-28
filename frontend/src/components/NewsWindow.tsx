@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Frame, Modal, Button, Input, Fieldset, RadioButton } from '@react95/core';
+import { Frame, Modal, Button, Input, Fieldset, RadioButton, TitleBar } from '@react95/core';
 import { CURRENT_PRICE, PRICE_CHANGE_24H, newsEvents } from '../mockData';
 import { useAppSettings } from '../context/AppSettingsContext';
 import type { NewsDirection } from '../types';
@@ -38,6 +38,7 @@ export function NewsWindow({ onClose }: NewsWindowProps) {
       id="news"
       icon={<span>📰</span>}
       title="News & Price Control"
+      titleBarOptions={<TitleBar.Close onClick={onClose} />}
       style={{ left: 140, top: 50, width: 560, height: 500 }}
       buttons={[{ value: 'Close', onClick: onClose }]}
     >

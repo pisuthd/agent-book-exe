@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Frame, Modal, Button, Input, Fieldset } from '@react95/core';
+import { Frame, Modal, Button, Input, Fieldset, TitleBar } from '@react95/core';
 import { asks, bids, recentTrades, CURRENT_PRICE, PRICE_CHANGE_24H } from '../mockData';
 import { useAppSettings } from '../context/AppSettingsContext';
 
@@ -24,6 +24,7 @@ export function TradeWindow({ onClose }: TradeWindowProps) {
       id="trade"
       icon={<span>📊</span>}
       title="BTC/USDT"
+      titleBarOptions={<TitleBar.Close onClick={onClose} />}
       style={{ left: 80, top: 30, width: 700, height: 520 }}
       buttons={[{ value: 'Close', onClick: onClose }]}
     >

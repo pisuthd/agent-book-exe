@@ -1,4 +1,4 @@
-import { Frame, Modal } from '@react95/core';
+import { Frame, Modal, TitleBar } from '@react95/core';
 import { useAppSettings } from '../context/AppSettingsContext';
 
 interface HomePageWindowProps {
@@ -14,6 +14,7 @@ export function HomePageWindow({ onClose }: HomePageWindowProps) {
       icon={<span>🌐</span>}
       title="AXLMarket — Internet Explorer"
       buttons={[{ value: 'Close', onClick: onClose }]}
+      titleBarOptions={<TitleBar.Close onClick={onClose} />}
       style={{
         left: 20,
         top: 10,

@@ -1,4 +1,4 @@
-import { Frame, Modal, Button, Fieldset } from '@react95/core';
+import { Frame, Modal, Button, Fieldset, TitleBar } from '@react95/core';
 import { walletTxs } from '../mockData';
 import { useAppSettings } from '../context/AppSettingsContext';
 
@@ -14,6 +14,7 @@ export function WalletWindow({ onClose }: WalletWindowProps) {
       id="wallet"
       icon={<span>👛</span>}
       title="Wallet"
+      titleBarOptions={<TitleBar.Close onClick={onClose} />}
       style={{ left: 200, top: 80, width: 400, height: 360 }}
       buttons={[{ value: 'Close', onClick: onClose }]}
     >

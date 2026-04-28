@@ -1,4 +1,4 @@
-import { Frame, Modal, Fieldset } from '@react95/core';
+import { Frame, Modal, Fieldset, TitleBar } from '@react95/core';
 import { useAppSettings, DEFAULT_FONT_SIZE, MIN_FONT_SIZE, MAX_FONT_SIZE } from '../context/AppSettingsContext';
 
 interface SettingsWindowProps {
@@ -13,6 +13,7 @@ export function SettingsWindow({ onClose }: SettingsWindowProps) {
       id="settings"
       icon={<span>⚙️</span>}
       title="Settings"
+      titleBarOptions={<TitleBar.Close onClick={onClose} />}
       style={{ left: 260, top: 120, width: 360 }}
       buttons={[
         { value: 'Reset', onClick: () => dispatch({ type: 'RESET' }) },

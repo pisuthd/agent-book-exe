@@ -1,4 +1,4 @@
-import { Frame, Modal, Fieldset } from '@react95/core';
+import { Frame, Modal, Fieldset, TitleBar } from '@react95/core';
 import type { Agent } from '../types';
 import { useAppSettings } from '../context/AppSettingsContext';
 
@@ -21,6 +21,7 @@ export function AgentDetailWindow({ agent, onClose, offsetIndex }: AgentDetailWi
       id={`agent-detail-${agent.id}`}
       icon={<span>{agent.avatar}</span>}
       title={`${agent.name} — Detail`}
+      titleBarOptions={<TitleBar.Close onClick={onClose} />}
       style={{ left: leftOffset, top: topOffset, width: 520, height: 480 }}
       buttons={[{ value: 'Close', onClick: onClose }]}
     >

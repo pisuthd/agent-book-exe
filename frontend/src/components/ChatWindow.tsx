@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Frame, Modal } from '@react95/core';
+import { Frame, Modal, TitleBar } from '@react95/core';
 import { chatMessages, negotiations } from '../mockData';
 import { useAppSettings } from '../context/AppSettingsContext';
 import type { ChatChannel } from '../types';
@@ -25,6 +25,7 @@ export function ChatWindow({ onClose }: ChatWindowProps) {
       id="chat"
       icon={<span>💬</span>}
       title="Agent Chat"
+      titleBarOptions={<TitleBar.Close onClick={onClose} />}
       style={{ left: 120, top: 60, width: 600, height: 420 }}
       buttons={[{ value: 'Close', onClick: onClose }]}
     >

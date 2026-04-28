@@ -1,6 +1,6 @@
 import { createContext, useContext, useReducer, type Dispatch, type ReactNode } from 'react';
 
-const DEFAULT_FONT_SIZE = 14;
+const DEFAULT_FONT_SIZE = 16;
 const MIN_FONT_SIZE = 10;
 const MAX_FONT_SIZE = 24;
 
