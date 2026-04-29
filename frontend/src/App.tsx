@@ -23,7 +23,8 @@ import {
   FileFind,
   HelpBook,
   LoaderBat,
-  Computer3
+  Computer3,
+  Winmine1
 } from '@react95/icons';
 import type { Agent } from './types';
 import { agents as allAgents } from './mockData';
@@ -36,19 +37,21 @@ import { NewsWindow } from './components/NewsWindow';
 import { ChatWindow } from './components/ChatWindow';
 import { WalletWindow } from './components/WalletWindow';
 import { SettingsWindow } from './components/SettingsWindow';
+import { MinesweeperWindow } from './components/minesweeper/MinesweeperWindow';
 import './App.css';
 
-type WindowId = 'home' | 'agents' | 'trade' | 'news' | 'chat' | 'wallet' | 'about' | 'settings';
+type WindowId = 'home' | 'agents' | 'trade' | 'news' | 'chat' | 'wallet' | 'about' | 'settings' | 'minesweeper';
 
-const DESKTOP_ICONS: { id: WindowId; label: string; emoji: string }[] = [
-  { id: 'home', label: 'Home Page', emoji: '🌐' },
-  { id: 'agents', label: 'Agents', emoji: '🤖' },
-  { id: 'trade', label: 'BTC/USDT', emoji: '📊' },
-  { id: 'news', label: 'News', emoji: '📰' },
-  { id: 'chat', label: 'Chat', emoji: '💬' },
-  { id: 'wallet', label: 'Wallet', emoji: '👛' },
-  { id: 'settings', label: 'Settings', emoji: '⚙️' },
-  { id: 'about', label: 'About', emoji: 'ℹ️' },
+const DESKTOP_ICONS: { id: WindowId; label: string; icon: React.ReactNode }[] = [
+  { id: 'home', label: 'Home Page', icon: '🌐' },
+  { id: 'agents', label: 'Agents', icon: '🤖' },
+  { id: 'trade', label: 'BTC/USDT', icon: '📊' },
+  { id: 'news', label: 'News', icon: '📰' },
+  { id: 'chat', label: 'Chat', icon: '💬' },
+  { id: 'wallet', label: 'Wallet', icon: '👛' },
+  { id: 'minesweeper', label: 'Minesweeper', icon: <Winmine1 variant="32x32_4" /> },
+  { id: 'settings', label: 'Settings', icon: '⚙️' },
+  { id: 'about', label: 'About', icon: 'ℹ️' },
 ];
 
 function App() {
@@ -125,7 +128,7 @@ function App() {
               onClick={() => openWindow(icon.id)}
               onDoubleClick={() => openWindow(icon.id)}
             >
-              <span style={{ fontSize: 32 }}>{icon.emoji}</span>
+              <span style={{ fontSize: 32 }}>{icon.icon}</span>
               <span
                 style={{
                   color: 'white',
@@ -193,6 +196,11 @@ function App() {
       {/* Settings Window */}
       {openWindows.has('settings') && (
         <SettingsWindow onClose={() => closeWindow('settings')} />
+      )}
+
+      {/* Minesweeper Window */}
+      {openWindows.has('minesweeper') && (
+        <MinesweeperWindow onClose={() => closeWindow('minesweeper')} />
       )}
 
       {/* About Window */}
