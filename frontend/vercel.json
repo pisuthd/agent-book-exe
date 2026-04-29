@@ -1,0 +1,9 @@
+{
+    "$schema": "https://openapi.vercel.sh/vercel.json",
+    "rewrites": [
+        {
+            "source": "/agentbook-node-1/:path*",
+            "destination": "http://18.139.115.151:9002/:path*"
+        }
+    ]
+}
