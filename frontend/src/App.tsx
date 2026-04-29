@@ -7,9 +7,7 @@ import {
   Tooltip,
   TitleBar
 } from '@react95/core';
-import {
-  Progman46,
-  Shell3215,
+import {  
   FolderExe2,
   FolderExe,
   MicrosoftExchange,
@@ -24,7 +22,8 @@ import {
   HelpBook,
   LoaderBat,
   Computer3,
-  Winmine1
+  Winmine1,
+  Bookmark
 } from '@react95/icons';
 import type { Agent } from './types';
 import { agents as allAgents } from './mockData';
@@ -44,11 +43,12 @@ type WindowId = 'home' | 'agents' | 'trade' | 'news' | 'chat' | 'wallet' | 'abou
 
 const DESKTOP_ICONS: { id: WindowId; label: string; icon: React.ReactNode }[] = [
   { id: 'home', label: 'Home Page', icon: '🌐' },
-  { id: 'agents', label: 'Agents', icon: '🤖' },
+  { id: 'agents', label: 'Agents', icon: '🦞' },
   { id: 'trade', label: 'BTC/USDT', icon: '📊' },
+  
   { id: 'news', label: 'News', icon: '📰' },
-  { id: 'chat', label: 'Chat', icon: '💬' },
-  { id: 'wallet', label: 'Wallet', icon: '👛' },
+  // { id: 'chat', label: 'Chat', icon: '💬' },
+  { id: 'wallet', label: 'Wallet', icon: '🦊' },
   { id: 'minesweeper', label: 'Minesweeper', icon: <Winmine1 variant="32x32_4" /> },
   { id: 'settings', label: 'Settings', icon: '⚙️' },
   { id: 'about', label: 'About', icon: 'ℹ️' },
@@ -57,7 +57,7 @@ const DESKTOP_ICONS: { id: WindowId; label: string; icon: React.ReactNode }[] = 
 function App() {
   const { fs } = useAppSettings();
   const audioRef = useRef(new Audio('/win95.mp3'));
-  const [openWindows, setOpenWindows] = useState<Set<WindowId>>(new Set());
+  const [openWindows, setOpenWindows] = useState<Set<WindowId>>(new Set(['about']));
   const [openAgentDetails, setOpenAgentDetails] = useState<Set<string>>(new Set());
 
   const playStartupSound = useCallback(() => {
@@ -207,12 +207,15 @@ function App() {
       {openWindows.has('about') && (
         <Modal
           id="about"
-          icon={<Progman46 variant="32x32_4" />}
-          title="About AXLMarket"
+          icon={<span>ℹ️</span>}
+          title="About"
           titleBarOptions={<TitleBar.Close onClick={() => closeWindow('about')} />}
-          buttons={[{ value: 'OK', onClick: () => closeWindow('about') }]}
+          buttons={[
+            { value: 'Home Page', onClick: () => openWindow('home') },
+            { value: 'Close', onClick: () => closeWindow('about') },
+          ]}
           style={{
-            left: 240,
+            left: 120,
             top: 140,
             width: 340,
           }}
@@ -227,7 +230,7 @@ function App() {
               padding: 16,
             }}
           >
-            <Shell3215 variant="32x32_4" />
+            <Bookmark variant="32x32_4" />
             <h2
               style={{
                 margin: 0,
@@ -235,7 +238,7 @@ function App() {
                 fontFamily: 'MS Sans Serif, sans-serif',
               }}
             >
-              AXLMarket v1.0
+              AgentBook.exe v1.0
             </h2>
             <p
               style={{
@@ -245,9 +248,9 @@ function App() {
                 color: '#444',
               }}
             >
-              Decentralized Market Maker Agent Network
+              An orderbook DEX backed by a P2P network of autonomous market makers on AXL.
               <br />
-              Built on AXL P2P Network + EVM Testnet
+               Now live on Ethereum Sepolia
             </p>
             <Frame
               style={{
@@ -260,7 +263,7 @@ function App() {
               <span style={{ fontSize: fs(11), color: '#888' }}>
                 Built with React95 + AXL
                 <br />
-                &copy; 2026 AXLMarket
+                &copy; 2026 AgentBook
               </span>
             </Frame>
           </Modal.Content>
@@ -270,59 +273,7 @@ function App() {
       {/* TaskBar */}
       <TaskBar
         list={
-          <List width={'200px'}>
-            {/* <List.Item>
-              <Frame style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <Progman12 variant="32x32_4" />
-                 Trade
-              </Frame>
-              <List>
-                <List.Item onClick={() => openWindow('trade')}>
-                  <Frame style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <span style={{ fontSize: 16 }}>📊</span> BTC/USDT
-                  </Frame>
-                </List.Item>
-              </List>
-            </List.Item>
-            <List.Item onClick={() => openWindow('agents')}>
-              <Frame style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <Conflnk102 variant="32x32_4" /> Agents
-              </Frame>
-            </List.Item>
-            
-            <List.Item onClick={() => openWindow('home')}>
-              <Frame style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                 <Url102 variant="32x32_4" /> Home Page
-              </Frame>
-            </List.Item>
-            
-            <List.Item onClick={() => openWindow('news')}>
-              <Frame style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                 <Mcm401 variant="32x32_4" /> News & Price
-              </Frame>
-            </List.Item>
-            <List.Item onClick={() => openWindow('chat')}>
-              <Frame style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <Textchat2 variant="32x32_4" /> Agent Chat
-              </Frame>
-            </List.Item>
-            <List.Item onClick={() => openWindow('wallet')}>
-              <Frame style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <span style={{ fontSize: 16 }}>👛</span> Wallet
-              </Frame>
-            </List.Item> 
-            <List.Item onClick={() => openWindow('settings')}>
-              <Frame style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <span style={{ fontSize: 16 }}>⚙️</span> Settings
-              </Frame>
-            </List.Item>
-            <List.Divider />
-            <List.Item onClick={() => openWindow('about')}>
-              <Frame style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <Progman46 variant="32x32_4" />
-                About AXLMarket...
-              </Frame>
-            </List.Item> */}
+          <List width={'200px'}> 
             <List.Item icon={<FolderExe2 variant="32x32_4" />}>
               <List width={'200px'}>
                 <List.Item icon={<FolderExe variant="16x16_4" />}>
