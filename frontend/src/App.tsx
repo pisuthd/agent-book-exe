@@ -57,7 +57,7 @@ const DESKTOP_ICONS: { id: WindowId; label: string; icon: React.ReactNode }[] = 
 function App() {
   const { fs } = useAppSettings();
   const audioRef = useRef(new Audio('/win95.mp3'));
-  const [openWindows, setOpenWindows] = useState<Set<WindowId>>(new Set(['about']));
+  const [openWindows, setOpenWindows] = useState<Set<WindowId>>(new Set());
   const [openAgentDetails, setOpenAgentDetails] = useState<Set<string>>(new Set());
 
   const playStartupSound = useCallback(() => {
@@ -211,7 +211,7 @@ function App() {
           title="About"
           titleBarOptions={<TitleBar.Close onClick={() => closeWindow('about')} />}
           buttons={[
-            { value: 'Home Page', onClick: () => openWindow('home') },
+            // { value: 'Home Page', onClick: () => openWindow('home') },
             { value: 'Close', onClick: () => closeWindow('about') },
           ]}
           style={{
