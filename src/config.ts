@@ -1,7 +1,7 @@
 import { sepolia } from 'viem/chains'
 import { createPublicClient, createWalletClient, http, type PublicClient, type WalletClient } from 'viem';
 import { privateKeyToAccount, generatePrivateKey, type Account } from 'viem/accounts';
-import { getPeerPrivateKey, setPeerPrivateKey, peerExists } from './agent-registry';
+import { getPeerPrivateKey, setPeerPrivateKey } from './agent-registry';
 
 // Backend configuration
 export const BACKEND_URL = process.env.BACKEND_URL || 'http://localhost:3001';
@@ -10,10 +10,15 @@ export const BACKEND_URL = process.env.BACKEND_URL || 'http://localhost:3001';
 export const config = {
     chain: sepolia,
     chainId: sepolia.id, // 11155111
-    rpcProviderUrl: process.env.RPC_URL || 'https://sepolia.drpc.org',
+    rpcProviderUrl: process.env.RPC_URL || 'https://eth-sepolia.g.alchemy.com/v2/46BFnBkjDdWActWG5HvRV',
     blockExplorer: 'https://sepolia.etherscan.io',
     nativeCurrency: 'ETH'
 };
+
+// Contract addresses (Sepolia)
+export const SETTLEMENT_ADDRESS = '0xe3CeB910F779dE87F4716f9290dC41FCdd85b45B';
+export const WBTC_ADDRESS = '0x2Ad531B1fE90beF60F8C20d85092119C84904a76';
+export const USDT_ADDRESS = '0x709bc83E7c65Dc9D4B4B24DDfE24D117DEde9924';
 
 // Validate PEER_ID format (64 hex characters, no 0x prefix)
 function isValidPeerId(peerId: string): boolean {

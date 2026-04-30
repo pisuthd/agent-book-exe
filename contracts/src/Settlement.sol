@@ -8,9 +8,10 @@ import {TradeParams, AgentFill} from "./types/SettlementTypes.sol";
 
 /**
  * @title Settlement
- * @notice Permit2-based atomic settlement for BTC/USDT trading
+ * @notice Atomic settlement for AgentBook.exe
  * @dev Non-custodial: agents, users keep tokens in their own wallets
- *      Uses Uniswap Permit2 for off-chain signature verification
+ *      - User side: uses Permit2 signature (EIP-712) (now updated to ERC-20 approval)
+ *      - Agent side: uses ERC20 approval 
  */
 contract Settlement {
     using SafeTransferLib for ERC20;
@@ -34,103 +35,46 @@ contract Settlement {
     );
 
     /**
-     * @param _permit2 Address of Permit2 contract (Sepolia: 0x000000000022D473030F116dDEE9F6B43aC78BA3)
+     * @param _permit2 Permit2 address (Sepolia: 0x000000000022D473030F116dDEE9F6B43aC78BA3)
      */
     constructor(address _permit2) {
         permit2 = ISignatureTransfer(_permit2);
     }
 
     /**
-     * @notice Settle a trade atomically using Permit2 signatures from user AND agents
-     * @dev Two-phase transfer per fill:
-     *      Phase 1: Transfer user's token to agent (verified by user's Permit2 sig)
-     *      Phase 2: Transfer agent's token to user (verified by agent's Permit2 sig)
+     * @notice Settle a trade using ERC20 approval for both user and agents
+     *      - User approves Settlement contract (no Permit2 signature)
+     *      - Agents approve Settlement contract (no Permit2 signature)
      *
-     * @param params Trade parameters including user sig, fills, and amounts
+     * @param params Trade parameters
      */
     function settleTrade(TradeParams calldata params) external {
         uint256 totalBase;
         uint256 totalQuote;
 
-        // Phase 1: Transfer user's tokens to each agent
+        // Phase 1: User's tokens → Agent (user uses ERC20 approval to Settlement)
         for (uint256 i = 0; i < params.fills.length; i++) {
             AgentFill calldata fill = params.fills[i];
 
             if (params.isBuy) {
-                permit2.permitTransferFrom(
-                    ISignatureTransfer.PermitTransferFrom({
-                        permitted: ISignatureTransfer.TokenPermissions({
-                            token: params.quoteToken,
-                            amount: fill.quoteAmount
-                        }),
-                        nonce: params.userNonce + i,
-                        deadline: params.deadline
-                    }),
-                    ISignatureTransfer.SignatureTransferDetails({
-                        to: fill.agent,
-                        requestedAmount: fill.quoteAmount
-                    }),
-                    params.user,
-                    params.userSignature
-                );
+                // User sells USDT, buys WBTC
+                ERC20(params.quoteToken).transferFrom(params.user, fill.agent, fill.quoteAmount);
             } else {
-                permit2.permitTransferFrom(
-                    ISignatureTransfer.PermitTransferFrom({
-                        permitted: ISignatureTransfer.TokenPermissions({
-                            token: params.baseToken,
-                            amount: fill.baseAmount
-                        }),
-                        nonce: params.userNonce + i,
-                        deadline: params.deadline
-                    }),
-                    ISignatureTransfer.SignatureTransferDetails({
-                        to: fill.agent,
-                        requestedAmount: fill.baseAmount
-                    }),
-                    params.user,
-                    params.userSignature
-                );
+                // User sells WBTC, buys USDT
+                ERC20(params.baseToken).transferFrom(params.user, fill.agent, fill.baseAmount);
             }
         }
 
-        // Phase 2: Transfer each agent's tokens to user
+        // Phase 2: Agent's tokens → User (agents use ERC20 approval to Settlement)
         for (uint256 i = 0; i < params.fills.length; i++) {
             AgentFill calldata fill = params.fills[i];
 
             if (params.isBuy) {
-                permit2.permitTransferFrom(
-                    ISignatureTransfer.PermitTransferFrom({
-                        permitted: ISignatureTransfer.TokenPermissions({
-                            token: params.baseToken,
-                            amount: fill.baseAmount
-                        }),
-                        nonce: fill.agentNonce,
-                        deadline: params.deadline
-                    }),
-                    ISignatureTransfer.SignatureTransferDetails({
-                        to: params.user,
-                        requestedAmount: fill.baseAmount
-                    }),
-                    fill.agent,
-                    fill.agentSignature
-                );
+                // Agent transfers WBTC to user
+                ERC20(params.baseToken).transferFrom(fill.agent, params.user, fill.baseAmount);
             } else {
-                permit2.permitTransferFrom(
-                    ISignatureTransfer.PermitTransferFrom({
-                        permitted: ISignatureTransfer.TokenPermissions({
-                            token: params.quoteToken,
-                            amount: fill.quoteAmount
-                        }),
-                        nonce: fill.agentNonce,
-                        deadline: params.deadline
-                    }),
-                    ISignatureTransfer.SignatureTransferDetails({
-                        to: params.user,
-                        requestedAmount: fill.quoteAmount
-                    }),
-                    fill.agent,
-                    fill.agentSignature
-                );
+                // Agent transfers USDT to user
+                ERC20(params.quoteToken).transferFrom(fill.agent, params.user, fill.quoteAmount);
             }
 
             totalBase += fill.baseAmount;

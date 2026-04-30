@@ -1,4 +1,4 @@
-import { publicClient, walletClient, account, config } from '../config';
+import { publicClient, walletClient, account, config, SETTLEMENT_ADDRESS } from '../config';
 import { Address, formatUnits, parseUnits } from 'viem';
 import { ERC20_ABI, MOCK_TOKEN_ABI } from '../contracts/erc20';
 
@@ -91,8 +91,9 @@ export class WalletAgent {
         }
     }
 
-    // Approve token to Permit2 contract
-    async approveToPermit2(tokenSymbol: string) {
+    // Approve token to Settlement contract for trading
+    // Agents use ERC20 approval (no signature needed)
+    async approveToken(tokenSymbol: string) {
         const symbol = tokenSymbol.toUpperCase();
         const tokenConfig = TOKEN_CONFIGS[symbol as keyof typeof TOKEN_CONFIGS];
 
@@ -100,8 +101,8 @@ export class WalletAgent {
             throw new Error(`Token ${tokenSymbol} not supported. Available: WBTC, USDT`);
         }
 
-        // Permit2 address on Sepolia
-        const permit2Address = '0x000000000022D473030F116dDEE9F6B43aC78BA3' as Address;
+        // Approve Settlement contract (agents use ERC20 approval, no Permit2 signature needed)
+        const settlementAddress = SETTLEMENT_ADDRESS;
 
         try {
             const maxUint256 = BigInt('0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff');
@@ -110,7 +111,7 @@ export class WalletAgent {
                 address: tokenConfig.address,
                 abi: ERC20_ABI,
                 functionName: 'approve',
-                args: [permit2Address, maxUint256],
+                args: [settlementAddress, maxUint256],
                 account: account
             } as any);
 
@@ -119,119 +120,14 @@ export class WalletAgent {
                 transaction_hash: txHash,
                 token_symbol: symbol,
                 token_address: tokenConfig.address,
-                spender: permit2Address,
+                spender: settlementAddress,
                 amount: 'unlimited (max uint256)',
                 explorer_url: `${config.blockExplorer}/tx/${txHash}`
             };
         } catch (error: any) {
-            throw new Error(`Failed to approve ${symbol} to Permit2: ${error.message}`);
+            throw new Error(`Failed to approve ${symbol} for trading: ${error.message}`);
         }
-    }
-
-    // Get Permit2 nonce for the agent
-    async getPermit2Nonce(tokenSymbol: string) {
-        const symbol = tokenSymbol.toUpperCase();
-        const tokenConfig = TOKEN_CONFIGS[symbol as keyof typeof TOKEN_CONFIGS];
-
-        if (!tokenConfig) {
-            throw new Error(`Token ${tokenSymbol} not supported. Available: WBTC, USDT`);
-        }
-
-        try {
-            const nonce = await publicClient.readContract({
-                address: tokenConfig.address,
-                abi: [
-                    {
-                        inputs: [{ name: 'owner', type: 'address' }],
-                        name: 'nonces',
-                        outputs: [{ name: '', type: 'uint256' }],
-                        stateMutability: 'view',
-                        type: 'function'
-                    }
-                ],
-                functionName: 'nonces',
-                args: [this.address]
-            }) as bigint;
-
-            return {
-                status: 'success',
-                token_symbol: symbol,
-                token_address: tokenConfig.address,
-                owner: this.address,
-                nonce: nonce.toString(),
-                nonce_bigint: nonce
-            };
-        } catch (error: any) {
-            throw new Error(`Failed to get Permit2 nonce: ${error.message}`);
-        }
-    }
-
-    // Get inventory with skew calculation
-    async getInventory() {
-        try {
-            const btcBalance = await publicClient.readContract({
-                address: TOKEN_CONFIGS.WBTC.address,
-                abi: ERC20_ABI,
-                functionName: 'balanceOf',
-                args: [this.address]
-            }) as bigint;
-
-            const usdtBalance = await publicClient.readContract({
-                address: TOKEN_CONFIGS.USDT.address,
-                abi: ERC20_ABI,
-                functionName: 'balanceOf',
-                args: [this.address]
-            }) as bigint;
-
-            const btcFormatted = formatUnits(btcBalance, TOKEN_CONFIGS.WBTC.decimals);
-            const usdtFormatted = formatUnits(usdtBalance, TOKEN_CONFIGS.USDT.decimals);
-
-            // Calculate inventory skew
-            // Target: equal value in BTC and USDT
-            // BTC value = btc * mid_price, USDT value = usdt
-            const midPrice = 64000; // Approximate mid price
-            const btcValue = Number(btcFormatted) * midPrice;
-            const usdtValue = Number(usdtFormatted);
-            
-            // Skew: positive = long BTC, negative = short BTC
-            const totalValue = (btcValue + usdtValue) / 2;
-            const targetBtcValue = totalValue;
-            const targetUsdtValue = totalValue;
-            
-            const skew = (btcValue - targetBtcValue) / targetBtcValue;
-            
-            // Preference based on skew
-            let preference: 'neutral' | 'want_to_sell' | 'want_to_buy';
-            if (Math.abs(skew) < 0.1) {
-                preference = 'neutral';
-            } else if (skew > 0) {
-                preference = 'want_to_sell';
-            } else {
-                preference = 'want_to_buy';
-            }
-
-            return {
-                status: 'success',
-                address: this.address,
-                btc: {
-                    balance: btcBalance.toString(),
-                    balance_formatted: btcFormatted,
-                    decimals: TOKEN_CONFIGS.WBTC.decimals,
-                    value_usdt: btcValue
-                },
-                usdt: {
-                    balance: usdtBalance.toString(),
-                    balance_formatted: usdtFormatted,
-                    decimals: TOKEN_CONFIGS.USDT.decimals
-                },
-                inventory_skew: skew,
-                preference,
-                mid_price_used: midPrice
-            };
-        } catch (error: any) {
-            throw new Error(`Failed to get inventory: ${error.message}`);
-        }
-    }
+    } 
 
     // Sign a message
     async signMessage(message: string): Promise<string> {

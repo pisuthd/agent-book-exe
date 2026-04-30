@@ -1,6 +1,7 @@
 pragma solidity ^0.8.20;
 
-/// @notice Trade parameters for signature-based settlement
+/// @notice Trade parameters for settlement
+/// @dev User signs Permit2, agents use ERC20 approval (no signatures needed for agents)
 struct TradeParams {
     address user;
     address baseToken;
@@ -15,10 +16,9 @@ struct TradeParams {
 }
 
 /// @notice Individual agent fill
+/// @dev agentSignature removed - agents use ERC20 approval instead of signatures
 struct AgentFill {
     address agent;
-    uint256 agentNonce;
     uint256 baseAmount;
     uint256 quoteAmount;
-    bytes agentSignature;
 }
