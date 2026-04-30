@@ -37,18 +37,19 @@ import { ChatWindow } from './components/ChatWindow';
 import { WalletWindow } from './components/WalletWindow';
 import { SettingsWindow } from './components/SettingsWindow';
 import { MinesweeperWindow } from './components/minesweeper/MinesweeperWindow';
+import { PeerListWindow } from './components/PeerListWindow';
 import './App.css';
 
-type WindowId = 'home' | 'agents' | 'trade' | 'news' | 'chat' | 'wallet' | 'about' | 'settings' | 'minesweeper';
+type WindowId = 'home' | 'agents' | 'trade' | 'news' | 'chat' | 'wallet' | 'about' | 'settings' | 'minesweeper' | 'peers';
 
 const DESKTOP_ICONS: { id: WindowId; label: string; icon: React.ReactNode }[] = [
-  { id: 'home', label: 'Home Page', icon: '🌐' },
-  { id: 'agents', label: 'Agents', icon: '🦞' },
-  { id: 'trade', label: 'BTC/USDT', icon: '📊' },
-  
+  // { id: 'home', label: 'Home Page', icon: '🌐' }, 
+  { id: 'trade', label: 'BTC/USDT', icon: '📊' }, 
   { id: 'news', label: 'News', icon: '📰' },
-  { id: 'chat', label: 'Chat', icon: '💬' },
-  { id: 'wallet', label: 'Wallet', icon: '👛' },
+  { id: 'agents', label: 'Agents', icon: '🦞' },
+  { id: 'peers', label: 'Peer List', icon: '🔗' },
+  // { id: 'chat', label: 'Chat', icon: '💬' },
+  { id: 'wallet', label: 'Wallet', icon: '👛' },   
   { id: 'minesweeper', label: 'Minesweeper', icon: <Winmine1 variant="32x32_4" /> },
   { id: 'settings', label: 'Settings', icon: '⚙️' },
   { id: 'about', label: 'About', icon: 'ℹ️' },
@@ -201,6 +202,11 @@ function App() {
       {/* Minesweeper Window */}
       {openWindows.has('minesweeper') && (
         <MinesweeperWindow onClose={() => closeWindow('minesweeper')} />
+      )}
+
+      {/* Peer List Window */}
+      {openWindows.has('peers') && (
+        <PeerListWindow onClose={() => closeWindow('peers')} />
       )}
 
       {/* About Window */}

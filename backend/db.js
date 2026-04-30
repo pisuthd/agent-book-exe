@@ -27,6 +27,12 @@ db.exec(`
     created_at TEXT DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (pair_id) REFERENCES pairs(id) ON DELETE CASCADE
   );
+
+  CREATE TABLE IF NOT EXISTS peers (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    public_key TEXT UNIQUE NOT NULL,
+    created_at TEXT DEFAULT CURRENT_TIMESTAMP
+  );
 `);
 
 // Seed data function
@@ -82,8 +88,7 @@ export function seedData() {
   for (const news of newsData) {
     insertNews.run(news.pair_id, news.headline, news.summary, news.direction, news.magnitude);
   }
-
-  console.log('Database seeded with mock data');
+ 
 }
 
 // Helper functions
@@ -101,6 +106,7 @@ export function updatePairPrice(id, price) {
   return getPair(id);
 }
 
+// Helper functions - News
 export function getNewsForPair(pairId) {
   return db.prepare('SELECT * FROM news WHERE pair_id = ? ORDER BY created_at DESC').all(pairId);
 }
@@ -116,6 +122,28 @@ export function addNews(pairId, headline, summary, direction, magnitude) {
 
 export function deleteNews(id) {
   return db.prepare('DELETE FROM news WHERE id = ?').run(id);
+}
+
+// Helper functions - Peers
+export function getAllPeersFromDb() {
+  return db.prepare('SELECT * FROM peers ORDER BY created_at DESC').all();
+}
+
+export function addPeer(publicKey) {
+  try {
+    const stmt = db.prepare('INSERT INTO peers (public_key) VALUES (?)');
+    const result = stmt.run(publicKey);
+    return db.prepare('SELECT * FROM peers WHERE id = ?').get(result.lastInsertRowid);
+  } catch (err) {
+    if (err.message.includes('UNIQUE constraint')) {
+      return null; // Already exists
+    }
+    throw err;
+  }
+}
+
+export function deletePeer(id) {
+  return db.prepare('DELETE FROM peers WHERE id = ?').run(id);
 }
 
 export default db;

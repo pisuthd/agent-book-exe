@@ -1,4 +1,4 @@
-import { createContext, useContext, useReducer, type Dispatch, type ReactNode } from 'react';
+import { createContext, useCallback, useContext, useReducer, type Dispatch, type ReactNode } from 'react';
 
 const DEFAULT_FONT_SIZE = 16;
 const MIN_FONT_SIZE = 10;
@@ -53,7 +53,6 @@ export function AppSettingsProvider({ children }: { children: ReactNode }) {
   );
 }
 
-import { useCallback } from 'react';
 
 export function useAppSettings(): AppSettingsContextValue {
   const ctx = useContext(AppSettingsContext);

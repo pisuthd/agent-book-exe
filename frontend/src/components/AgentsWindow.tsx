@@ -36,30 +36,7 @@ export function AgentsWindow({ onSelectAgent, onClose }: AgentsWindowProps) {
       titleBarOptions={<TitleBar.Close onClick={onClose} />}
       buttons={[{ value: 'Close', onClick: onClose }]}
     >
-      <Modal.Content bg="white" style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
-        {/* Address Bar */}
-        <Frame style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: 4,
-          padding: '4px 6px',
-          background: '#c0c0c0',
-          borderBottom: '1px solid #808080',
-          flexShrink: 0,
-        }}>
-          <span style={{ fontSize: fs(11), fontWeight: 'bold' }}>Address</span>
-          <Frame style={{
-            flex: 1,
-            background: 'white',
-            padding: '2px 6px',
-            borderStyle: 'inset',
-            borderWidth: 2,
-            fontSize: fs(11),
-          }}>
-            🌐 https://agentbook-exe.vercel.app/agents
-          </Frame>
-        </Frame>
-
+      <Modal.Content bg="white" style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' , padding: "0px"}}>
         {/* Agents Table */}
         <Frame style={{ flex: 1, overflow: 'auto' }}>
           <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: fs(12) }}>
