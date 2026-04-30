@@ -1,11 +1,11 @@
 {
-    "name": "agentbook-mcp-server",
+    "name": "@tamago-labs/agentbook-exe",
     "version": "1.0.0",
     "main": "dist/index.js",
     "module": "./dist/index.mjs",
     "types": "./dist/index.d.ts",
     "bin": {
-        "agentbook-mcp-server": "dist/index.js"
+        "agentbook-exe": "dist/index.js"
     },
     "files": [
         "dist"

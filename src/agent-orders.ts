@@ -1,5 +1,6 @@
 import fs from 'fs';
 import path from 'path';
+import os from 'os';
 import { randomUUID } from 'crypto';
 
 export interface Order {
@@ -10,18 +11,29 @@ export interface Order {
     createdAt: string;
 }
 
-export interface AgentOrders {
+export interface PeerOrders {
     orders: Order[];
     updatedAt: string;
 }
 
 export interface OrdersRegistry {
-    [agentId: string]: AgentOrders;
+    [peerId: string]: PeerOrders;
 }
 
-const ORDERS_PATH = path.join(process.cwd(), 'agent-orders.json');
+// Use fixed path in user's home directory, not cwd
+const AGENTBOOK_DIR = path.join(os.homedir(), '.agentbook');
+const ORDERS_PATH = path.join(AGENTBOOK_DIR, 'peer-orders.json');
+
+// Ensure directory exists
+function ensureDir(): void {
+    if (!fs.existsSync(AGENTBOOK_DIR)) {
+        fs.mkdirSync(AGENTBOOK_DIR, { recursive: true });
+    }
+}
 
 export function loadOrders(): OrdersRegistry {
+    ensureDir();
+    
     if (!fs.existsSync(ORDERS_PATH)) {
         return {};
     }
@@ -30,25 +42,26 @@ export function loadOrders(): OrdersRegistry {
         const content = fs.readFileSync(ORDERS_PATH, 'utf-8');
         return JSON.parse(content) as OrdersRegistry;
     } catch {
-        console.error('⚠️ Failed to parse agent-orders.json, using empty registry');
+        console.error('⚠️ Failed to parse peer-orders.json, using empty registry');
         return {};
     }
 }
 
 export function saveOrders(registry: OrdersRegistry): void {
+    ensureDir();
     fs.writeFileSync(ORDERS_PATH, JSON.stringify(registry, null, 2), 'utf-8');
 }
 
-export function getOrders(agentId: string): Order[] {
+export function getOrders(peerId: string): Order[] {
     const registry = loadOrders();
-    return registry[agentId]?.orders || [];
+    return registry[peerId]?.orders || [];
 }
 
-export function addOrder(agentId: string, side: 'bid' | 'ask', price: number, size: number): Order {
+export function addOrder(peerId: string, side: 'bid' | 'ask', price: number, size: number): Order {
     const registry = loadOrders();
     
-    if (!registry[agentId]) {
-        registry[agentId] = { orders: [], updatedAt: new Date().toISOString() };
+    if (!registry[peerId]) {
+        registry[peerId] = { orders: [], updatedAt: new Date().toISOString() };
     }
 
     const order: Order = {
@@ -59,21 +72,21 @@ export function addOrder(agentId: string, side: 'bid' | 'ask', price: number, si
         createdAt: new Date().toISOString()
     };
 
-    registry[agentId].orders.push(order);
-    registry[agentId].updatedAt = new Date().toISOString();
+    registry[peerId].orders.push(order);
+    registry[peerId].updatedAt = new Date().toISOString();
     saveOrders(registry);
 
     return order;
 }
 
-export function cancelOrder(agentId: string, orderId: string): boolean {
+export function cancelOrder(peerId: string, orderId: string): boolean {
     const registry = loadOrders();
     
-    if (!registry[agentId]) {
+    if (!registry[peerId]) {
         return false;
     }
 
-    const orders = registry[agentId].orders;
+    const orders = registry[peerId].orders;
     const index = orders.findIndex(o => o.id === orderId);
     
     if (index === -1) {
@@ -81,18 +94,18 @@ export function cancelOrder(agentId: string, orderId: string): boolean {
     }
 
     orders.splice(index, 1);
-    registry[agentId].updatedAt = new Date().toISOString();
+    registry[peerId].updatedAt = new Date().toISOString();
     saveOrders(registry);
 
     return true;
 }
 
-export function clearOrders(agentId: string): void {
+export function clearOrders(peerId: string): void {
     const registry = loadOrders();
     
-    if (registry[agentId]) {
-        registry[agentId].orders = [];
-        registry[agentId].updatedAt = new Date().toISOString();
+    if (registry[peerId]) {
+        registry[peerId].orders = [];
+        registry[peerId].updatedAt = new Date().toISOString();
         saveOrders(registry);
     }
 }

@@ -1,12 +1,12 @@
 import { z } from "zod";
 import { WalletAgent } from "../../agent/wallet";
 import { type McpTool } from "../../types";
-import { getAgentId } from "../../config";
+import { getPeerId } from "../../config";
 import { addOrder } from "../../agent-orders";
 
 export const SubmitOrderTool: McpTool = {
     name: "submit_order",
-    description: "Submit a new order (bid or ask) for the current agent",
+    description: "Submit a new order (bid or ask) for the current peer",
     schema: {
         side: z.enum(['bid', 'ask'])
             .describe("Order side: 'bid' (buy) or 'ask' (sell)"),
@@ -31,8 +31,8 @@ export const SubmitOrderTool: McpTool = {
                 throw new Error('Size must be positive');
             }
 
-            const agentId = getAgentId();
-            const order = addOrder(agentId, side, price, size);
+            const peerId = getPeerId();
+            const order = addOrder(peerId, side, price, size);
 
             return {
                 status: "success",

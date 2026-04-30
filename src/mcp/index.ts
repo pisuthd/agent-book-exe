@@ -7,8 +7,11 @@ import { CancelOrderTool } from "./orders/cancel_order_tool";
 import { ApprovePermit2Tool } from "./permit/approve_permit2_tool";
 import { GetPermit2NonceTool } from "./permit/get_permit2_nonce_tool";
 import { GetInventoryTool } from "./permit/get_inventory_tool";
+import { GetAccountTool } from "./account/get_account_tool";
 
 export const AGENT_BOOK_TOOLS: any = [
+    // Account
+    GetAccountTool,
     // Token tools
     GetTokenBalancesTool,
     MintTokensTool,

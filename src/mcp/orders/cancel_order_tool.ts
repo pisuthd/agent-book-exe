@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { WalletAgent } from "../../agent/wallet";
 import { type McpTool } from "../../types";
-import { getAgentId } from "../../config";
+import { getPeerId } from "../../config";
 import { cancelOrder, getOrders } from "../../agent-orders";
 
 export const CancelOrderTool: McpTool = {
@@ -19,17 +19,17 @@ export const CancelOrderTool: McpTool = {
                 throw new Error('order_id is required');
             }
 
-            const agentId = getAgentId();
+            const peerId = getPeerId();
             
             // Check if order exists
-            const orders = getOrders(agentId);
+            const orders = getOrders(peerId);
             const order = orders.find(o => o.id === order_id);
             
             if (!order) {
                 throw new Error(`Order ${order_id} not found`);
             }
 
-            const success = cancelOrder(agentId, order_id);
+            const success = cancelOrder(peerId, order_id);
 
             if (!success) {
                 throw new Error('Failed to cancel order');

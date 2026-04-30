@@ -2,7 +2,7 @@ import { sepolia } from 'viem/chains'
 import { createPublicClient, createWalletClient, http, type PublicClient, type WalletClient } from 'viem';
 import { privateKeyToAccount, generatePrivateKey, type Account } from 'viem/accounts';
 import { toHex } from 'viem';
-import { getAgentPrivateKey, setAgentPrivateKey, agentExists } from './agent-registry';
+import { getPeerPrivateKey, setPeerPrivateKey, peerExists } from './agent-registry';
 
 // Sepolia configuration
 export const config = {
@@ -13,35 +13,49 @@ export const config = {
     nativeCurrency: 'ETH'
 };
 
-// Get agent ID from environment
-export const getAgentId = (): string => {
-    const agentId = process.env.AGENT_ID;
-    if (!agentId) {
-        throw new Error('AGENT_ID environment variable is required');
+// Validate PEER_ID format (64 hex characters, no 0x prefix)
+function isValidPeerId(peerId: string): boolean {
+    return /^[a-fA-F0-9]{64}$/.test(peerId);
+}
+
+// Get peer ID from environment
+export const getPeerId = (): string => {
+    const peerId = process.env.PEER_ID;
+    if (!peerId) {
+        throw new Error('PEER_ID environment variable is required');
     }
-    return agentId;
+    if (!isValidPeerId(peerId)) {
+        throw new Error('PEER_ID must be exactly 64 hexadecimal characters (no 0x prefix)');
+    }
+    return peerId;
 };
 
-// Initialize account from agent registry or create new one
+// Initialize account from peer registry or create new one
 const getAccount = (): Account => {
-    const agentId = getAgentId();
+    const peerId = getPeerId();
     
-    // Check if agent already exists in registry
-    let privateKey = getAgentPrivateKey(agentId);
+    // Check if peer already exists in registry
+    let privateKey = getPeerPrivateKey(peerId);
     
     if (!privateKey) {
-        // Generate new wallet for this agent
-        console.error(`🔑 Agent '${agentId}' not found in registry. Creating new wallet...`);
-        const newPrivateKey = toHex(generatePrivateKey());
-        setAgentPrivateKey(agentId, newPrivateKey);
+        // Generate new wallet for this peer
+        console.error(`🔑 Peer '${peerId.slice(0, 8)}...' not found in registry. Creating new wallet...`);
+        const newPrivateKey = generatePrivateKey(); // Returns hex string with "0x" prefix
         privateKey = newPrivateKey;
-        console.error(`✅ New wallet created and saved for agent '${agentId}'`);
+        
+        // Create temporary account to get address
+        const tempAccount = privateKeyToAccount(newPrivateKey as `0x${string}`);
+        const address = tempAccount.address;
+        
+        setPeerPrivateKey(peerId, newPrivateKey, address);
+        console.error(`✅ New wallet created and saved for peer '${peerId.slice(0, 8)}...'`);
+        console.error(`📍 Address: ${address}`);
     } else {
-        console.error(`🔑 Using existing wallet for agent '${agentId}'`);
+        console.error(`🔑 Using existing wallet for peer '${peerId.slice(0, 8)}...'`);
     }
 
-    const formattedKey = privateKey.startsWith('0x') ? privateKey : `0x${privateKey}`;
-    return privateKeyToAccount(formattedKey as `0x${string}`);
+    // privateKey is already hex string with "0x" prefix from generatePrivateKey
+    return privateKeyToAccount(privateKey as `0x${string}`);
 };
 
 export const account: Account = getAccount();
