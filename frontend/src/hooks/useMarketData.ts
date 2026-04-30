@@ -44,6 +44,13 @@ export function useMarketData() {
 
   useEffect(() => {
     fetchPair();
+    
+    // Auto-refresh every 5 seconds
+    const interval = setInterval(() => {
+      fetchPair(pair?.id || DEFAULT_PAIR);
+    }, 5000);
+    
+    return () => clearInterval(interval);
   }, [fetchPair]);
 
   const updatePrice = async (newPrice: number) => {
