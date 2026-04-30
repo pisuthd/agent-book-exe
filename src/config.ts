@@ -1,6 +1,8 @@
 import { sepolia } from 'viem/chains'
 import { createPublicClient, createWalletClient, http, type PublicClient, type WalletClient } from 'viem';
-import { privateKeyToAccount, type Account } from 'viem/accounts';
+import { privateKeyToAccount, generatePrivateKey, type Account } from 'viem/accounts';
+import { toHex } from 'viem';
+import { getAgentPrivateKey, setAgentPrivateKey, agentExists } from './agent-registry';
 
 // Sepolia configuration
 export const config = {
@@ -11,12 +13,31 @@ export const config = {
     nativeCurrency: 'ETH'
 };
 
-// Initialize account from environment variable
+// Get or create agent ID from environment
+const getAgentId = (): string => {
+    const agentId = process.env.AGENT_ID;
+    if (!agentId) {
+        throw new Error('AGENT_ID environment variable is required');
+    }
+    return agentId;
+};
+
+// Initialize account from agent registry or create new one
 const getAccount = (): Account => {
-    const privateKey = process.env.PRIVATE_KEY;
+    const agentId = getAgentId();
+    
+    // Check if agent already exists in registry
+    let privateKey = getAgentPrivateKey(agentId);
     
     if (!privateKey) {
-        throw new Error('PRIVATE_KEY environment variable is required');
+        // Generate new wallet for this agent
+        console.error(`🔑 Agent '${agentId}' not found in registry. Creating new wallet...`);
+        const newPrivateKey = toHex(generatePrivateKey());
+        setAgentPrivateKey(agentId, newPrivateKey);
+        privateKey = newPrivateKey;
+        console.error(`✅ New wallet created and saved for agent '${agentId}'`);
+    } else {
+        console.error(`🔑 Using existing wallet for agent '${agentId}'`);
     }
 
     const formattedKey = privateKey.startsWith('0x') ? privateKey : `0x${privateKey}`;
