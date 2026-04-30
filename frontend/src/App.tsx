@@ -47,8 +47,8 @@ const DESKTOP_ICONS: { id: WindowId; label: string; icon: React.ReactNode }[] = 
   { id: 'trade', label: 'BTC/USDT', icon: '📊' },
   
   { id: 'news', label: 'News', icon: '📰' },
-  // { id: 'chat', label: 'Chat', icon: '💬' },
-  { id: 'wallet', label: 'Wallet', icon: '🦊' },
+  { id: 'chat', label: 'Chat', icon: '💬' },
+  { id: 'wallet', label: 'Wallet', icon: '👛' },
   { id: 'minesweeper', label: 'Minesweeper', icon: <Winmine1 variant="32x32_4" /> },
   { id: 'settings', label: 'Settings', icon: '⚙️' },
   { id: 'about', label: 'About', icon: 'ℹ️' },
