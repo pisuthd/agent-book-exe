@@ -1,38 +1,12 @@
 import { useState } from 'react';
 import { Frame, Modal, Button, Input, Fieldset, TitleBar } from '@react95/core';
-import { asks, bids, recentTrades } from '../mockData';
+import { useEnsName, useEnsAddress } from 'wagmi';
+import { recentTrades } from '../mockData';
 import { useAppSettings } from '../context/AppSettingsContext';
 import { useMarketData } from '../hooks/useMarketData';
 import { useTokenBalances } from '../hooks/useTokens';
+import { useOrders } from '../hooks/useOrders';
 import type { NewsDirection } from '../types';
-
-interface OrderbookEntry {
-  price: number;
-  size: number;
-  agent: string;
-  totalUsdt?: number;
-}
-
-interface GroupedEntry {
-  price: number;
-  entries: { size: number; agent: string }[];
-  totalSize: number;
-  totalUsdt: number;
-}
-
-function groupByPrice(entries: OrderbookEntry[]): GroupedEntry[] {
-  const grouped = entries.reduce((acc, entry) => {
-    if (!acc[entry.price]) {
-      acc[entry.price] = { price: entry.price, entries: [], totalSize: 0, totalUsdt: 0 };
-    }
-    acc[entry.price].entries.push({ size: entry.size, agent: entry.agent });
-    acc[entry.price].totalSize += entry.size;
-    acc[entry.price].totalUsdt += entry.size * entry.price;
-    return acc;
-  }, {} as Record<number, GroupedEntry>);
-  
-  return Object.values(grouped).sort((a, b) => b.price - a.price);
-}
 
 const directionColor = (dir: NewsDirection) => {
   switch (dir) {
@@ -56,10 +30,37 @@ interface TradeWindowProps {
   onClose: () => void;
 }
 
+// Resolve ENS for an address
+function EnsName({ address }: { address: string }) {
+
+  const { data: ensName } = useEnsName({
+    address: address as `0x${string}`,
+    chainId: 11155111,
+  });
+
+  const display = ensName || `${address.slice(0, 6)}...${address.slice(-4)}`;
+  return <span>{display}</span>;
+}
+
+// Format multiple addresses with ENS
+function AgentAddresses({ addresses }: { addresses: string[] }) {
+  return (
+    <>
+      {addresses.map((addr, idx) => (
+        <span key={idx}>
+          <EnsName address={addr} />
+          {idx < addresses.length - 1 && ', '}
+        </span>
+      ))}
+    </>
+  );
+}
+
 export function TradeWindow({ onClose }: TradeWindowProps) {
   const { fs } = useAppSettings();
   const { pair } = useMarketData();
   const { balances, isConnected } = useTokenBalances();
+  const { aggregated, loading, error, refetch } = useOrders();
   const [side, setSide] = useState<'BUY' | 'SELL'>('BUY');
   const [amount, setAmount] = useState('0.50');
   const [limitPrice, setLimitPrice] = useState(pair?.price?.toString() || '95000');
@@ -70,11 +71,11 @@ export function TradeWindow({ onClose }: TradeWindowProps) {
   const priceNum = parseFloat(limitPrice) || 0;
   const estTotal = amountNum * priceNum;
 
-  const groupedAsks = groupByPrice(asks);
-  const groupedBids = groupByPrice(bids);
-  
-  const totalAskSize = asks.reduce((sum, a) => sum + a.size, 0);
-  const totalBidSize = bids.reduce((sum, b) => sum + b.size, 0);
+  const groupedAsks = aggregated.asks;
+  const groupedBids = aggregated.bids;
+
+  const totalAskSize = groupedAsks.reduce((sum, a) => sum + a.totalSize, 0);
+  const totalBidSize = groupedBids.reduce((sum, b) => sum + b.totalSize, 0);
   const totalLiquidity = totalAskSize + totalBidSize;
 
   const btcBalance = balances.find(b => b.symbol === 'BTC')?.amount || 0;
@@ -90,6 +91,10 @@ export function TradeWindow({ onClose }: TradeWindowProps) {
       icon={<span>📊</span>}
       title="BTC/USDT"
       titleBarOptions={<TitleBar.Close onClick={onClose} />}
+      buttons={[
+        { value: 'Refresh', onClick: refetch },
+        { value: 'Close', onClick: onClose },
+      ]}
       style={{
         left: 20,
         top: 10,
@@ -113,8 +118,20 @@ export function TradeWindow({ onClose }: TradeWindowProps) {
           <span style={{ fontSize: fs(11) }}>24h Vol: <strong>1,234.56 BTC</strong></span>
           <span style={{ fontSize: fs(11) }}>High: <strong>$65,000</strong></span>
           <span style={{ fontSize: fs(11) }}>Low: <strong>$63,500</strong></span>
-          <span style={{ fontSize: fs(11) }}>Spread: <strong>$32 (0.05%)</strong></span>
+          <span style={{ fontSize: fs(11) }}>Spread: <strong>{aggregated.spread ? `$${aggregated.spread.toLocaleString()}` : 'N/A'}</strong></span>
         </Frame>
+
+        {/* Loading/Error Banner */}
+        {loading && (
+          <Frame style={{ padding: '4px 8px', background: '#ffffcc', borderBottom: '1px solid #cccc00' }}>
+            <span style={{ fontSize: fs(10), color: '#cc8800' }}>⏳ Loading orders...</span>
+          </Frame>
+        )}
+        {error && (
+          <Frame style={{ padding: '4px 8px', background: '#fff0f0', borderBottom: '1px solid #cc0000' }}>
+            <span style={{ fontSize: fs(10), color: '#cc0000' }}>⚠️ {error}</span>
+          </Frame>
+        )}
 
         {/* Main Trading Area */}
         <Frame style={{ flex: 1, display: 'flex', overflow: 'hidden' }}>
@@ -122,13 +139,13 @@ export function TradeWindow({ onClose }: TradeWindowProps) {
           <Frame style={{ flex: 1.2, flexDirection: 'column', borderRight: '2px solid', borderColor: '#808080' }}>
             {/* Asks (Sells) - Top */}
             <Frame style={{ flex: 1, flexDirection: 'column', padding: 4 }}>
-              <Frame style={{ 
+              <Frame style={{
                 display: 'flex',
                 justifyContent: 'space-between',
-                padding: '4px 8px', 
-                background: '#808080', 
-                color: 'white', 
-                fontSize: fs(12), 
+                padding: '4px 8px',
+                background: '#808080',
+                color: 'white',
+                fontSize: fs(12),
                 fontWeight: 'bold',
                 borderTop: '2px solid white',
                 borderLeft: '2px solid white',
@@ -139,43 +156,49 @@ export function TradeWindow({ onClose }: TradeWindowProps) {
                 <span style={{ color: '#ff8888' }}>SELL</span>
               </Frame>
               <Frame style={{ flex: 1, overflow: 'auto', background: 'white' }}>
-                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: fs(11) }}>
-                  <thead>
-                    <tr style={{ background: '#c0c0c0' }}>
-                      <th style={{ textAlign: 'right', padding: '4px 6px' }}>Price</th>
-                      <th style={{ textAlign: 'right', padding: '4px 6px' }}>Size</th>
-                      <th style={{ textAlign: 'right', padding: '4px 6px' }}>Total</th>
-                      <th style={{ textAlign: 'left', padding: '4px 6px' }}>Agents</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {[...groupedAsks].reverse().map((entry, i) => {
-                      const cumulative = groupedAsks.slice(groupedAsks.length - i - 1).reduce((sum, g) => sum + g.totalSize, 0) + entry.totalSize;
-                      const depthPct = (cumulative / totalLiquidity) * 100;
-                      return (
-                        <tr 
-                          key={`ask-${i}`} 
-                          onClick={() => handlePriceClick(entry.price)}
-                          style={{ cursor: 'pointer', background: `linear-gradient(to left, rgba(255,0,0,${depthPct/300}), transparent)` }}
-                        >
-                          <td style={{ 
-                            textAlign: 'right', 
-                            padding: '3px 6px', 
-                            color: '#cc0000',
-                            fontWeight: 'bold',
-                          }}>
-                            {entry.price.toLocaleString()}
-                          </td>
-                          <td style={{ textAlign: 'right', padding: '3px 6px' }}>{entry.totalSize.toFixed(4)}</td>
-                          <td style={{ textAlign: 'right', padding: '3px 6px', color: '#888' }}>{entry.totalUsdt.toLocaleString()}</td>
-                          <td style={{ textAlign: 'left', padding: '3px 6px', color: '#666' }}>
-                            {entry.entries.map(e => e.agent).join(', ')}
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
+                {groupedAsks.length === 0 ? (
+                  <Frame style={{ padding: 16, textAlign: 'center' }}>
+                    <span style={{ fontSize: fs(11), color: '#888' }}>No asks available</span>
+                  </Frame>
+                ) : (
+                  <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: fs(11) }}>
+                    <thead>
+                      <tr style={{ background: '#c0c0c0' }}>
+                        <th style={{ textAlign: 'right', padding: '4px 6px' }}>Price</th>
+                        <th style={{ textAlign: 'right', padding: '4px 6px' }}>Size</th>
+                        <th style={{ textAlign: 'right', padding: '4px 6px' }}>Total</th>
+                        <th style={{ textAlign: 'left', padding: '4px 6px' }}>Agents</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {[...groupedAsks].reverse().map((entry, i) => {
+                        const cumulative = groupedAsks.slice(groupedAsks.length - i - 1).reduce((sum, g) => sum + g.totalSize, 0) + entry.totalSize;
+                        const depthPct = totalLiquidity > 0 ? (cumulative / totalLiquidity) * 100 : 0;
+                        return (
+                          <tr
+                            key={`ask-${i}`}
+                            onClick={() => handlePriceClick(entry.price)}
+                            style={{ cursor: 'pointer', background: `linear-gradient(to left, rgba(255,0,0,${depthPct / 300}), transparent)` }}
+                          >
+                            <td style={{
+                              textAlign: 'right',
+                              padding: '3px 6px',
+                              color: '#cc0000',
+                              fontWeight: 'bold',
+                            }}>
+                              {entry.price.toLocaleString()}
+                            </td>
+                            <td style={{ textAlign: 'right', padding: '3px 6px' }}>{entry.totalSize.toFixed(4)}</td>
+                            <td style={{ textAlign: 'right', padding: '3px 6px', color: '#888' }}>{entry.totalUsdt.toLocaleString()}</td>
+                            <td style={{ textAlign: 'left', padding: '3px 6px', color: '#666', fontFamily: 'monospace', fontSize: fs(10) }}>
+                              <AgentAddresses addresses={entry.orders.map(o => o.address)} />
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                )}
               </Frame>
             </Frame>
 
@@ -190,18 +213,20 @@ export function TradeWindow({ onClose }: TradeWindowProps) {
               alignItems: 'center',
             }}>
               <span style={{ fontSize: fs(12) }}>Mid Price: <strong>${currentPrice.toLocaleString()}</strong></span>
-              <span style={{ fontSize: fs(12), fontWeight: 'bold', color: '#008000' }}>SPREAD: $32</span>
+              <span style={{ fontSize: fs(12), fontWeight: 'bold', color: '#008000' }}>
+                SPREAD: {aggregated.spread ? `$${aggregated.spread.toLocaleString()}` : 'N/A'}
+              </span>
             </Frame>
 
             {/* Bids (Buys) - Bottom */}
             <Frame style={{ flex: 1, flexDirection: 'column', padding: 4 }}>
-              <Frame style={{ 
+              <Frame style={{
                 display: 'flex',
                 justifyContent: 'space-between',
-                padding: '4px 8px', 
-                background: '#808080', 
-                color: 'white', 
-                fontSize: fs(12), 
+                padding: '4px 8px',
+                background: '#808080',
+                color: 'white',
+                fontSize: fs(12),
                 fontWeight: 'bold',
                 borderTop: '2px solid white',
                 borderLeft: '2px solid white',
@@ -212,43 +237,49 @@ export function TradeWindow({ onClose }: TradeWindowProps) {
                 <span style={{ color: '#88ff88' }}>BUY</span>
               </Frame>
               <Frame style={{ flex: 1, overflow: 'auto', background: 'white' }}>
-                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: fs(11) }}>
-                  <thead>
-                    <tr style={{ background: '#c0c0c0' }}>
-                      <th style={{ textAlign: 'right', padding: '4px 6px' }}>Price</th>
-                      <th style={{ textAlign: 'right', padding: '4px 6px' }}>Size</th>
-                      <th style={{ textAlign: 'right', padding: '4px 6px' }}>Total</th>
-                      <th style={{ textAlign: 'left', padding: '4px 6px' }}>Agents</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {groupedBids.map((entry, i) => {
-                      const cumulative = groupedBids.slice(0, i + 1).reduce((sum, g) => sum + g.totalSize, 0);
-                      const depthPct = (cumulative / totalLiquidity) * 100;
-                      return (
-                        <tr 
-                          key={`bid-${i}`} 
-                          onClick={() => handlePriceClick(entry.price)}
-                          style={{ cursor: 'pointer', background: `linear-gradient(to left, rgba(0,128,0,${depthPct/300}), transparent)` }}
-                        >
-                          <td style={{ 
-                            textAlign: 'right', 
-                            padding: '3px 6px', 
-                            color: '#008000',
-                            fontWeight: 'bold',
-                          }}>
-                            {entry.price.toLocaleString()}
-                          </td>
-                          <td style={{ textAlign: 'right', padding: '3px 6px' }}>{entry.totalSize.toFixed(4)}</td>
-                          <td style={{ textAlign: 'right', padding: '3px 6px', color: '#888' }}>{entry.totalUsdt.toLocaleString()}</td>
-                          <td style={{ textAlign: 'left', padding: '3px 6px', color: '#666' }}>
-                            {entry.entries.map(e => e.agent).join(', ')}
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
+                {groupedBids.length === 0 ? (
+                  <Frame style={{ padding: 16, textAlign: 'center' }}>
+                    <span style={{ fontSize: fs(11), color: '#888' }}>No bids available</span>
+                  </Frame>
+                ) : (
+                  <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: fs(11) }}>
+                    <thead>
+                      <tr style={{ background: '#c0c0c0' }}>
+                        <th style={{ textAlign: 'right', padding: '4px 6px' }}>Price</th>
+                        <th style={{ textAlign: 'right', padding: '4px 6px' }}>Size</th>
+                        <th style={{ textAlign: 'right', padding: '4px 6px' }}>Total</th>
+                        <th style={{ textAlign: 'left', padding: '4px 6px' }}>Agents</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {groupedBids.map((entry, i) => {
+                        const cumulative = groupedBids.slice(0, i + 1).reduce((sum, g) => sum + g.totalSize, 0);
+                        const depthPct = totalLiquidity > 0 ? (cumulative / totalLiquidity) * 100 : 0;
+                        return (
+                          <tr
+                            key={`bid-${i}`}
+                            onClick={() => handlePriceClick(entry.price)}
+                            style={{ cursor: 'pointer', background: `linear-gradient(to left, rgba(0,128,0,${depthPct / 300}), transparent)` }}
+                          >
+                            <td style={{
+                              textAlign: 'right',
+                              padding: '3px 6px',
+                              color: '#008000',
+                              fontWeight: 'bold',
+                            }}>
+                              {entry.price.toLocaleString()}
+                            </td>
+                            <td style={{ textAlign: 'right', padding: '3px 6px' }}>{entry.totalSize.toFixed(4)}</td>
+                            <td style={{ textAlign: 'right', padding: '3px 6px', color: '#888' }}>{entry.totalUsdt.toLocaleString()}</td>
+                            <td style={{ textAlign: 'left', padding: '3px 6px', color: '#666', fontFamily: 'monospace', fontSize: fs(10) }}>
+                              <AgentAddresses addresses={entry.orders.map(o => o.address)} />
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                )}
               </Frame>
             </Frame>
           </Frame>
@@ -256,7 +287,7 @@ export function TradeWindow({ onClose }: TradeWindowProps) {
           {/* Trade Panel - Right Panel */}
           <Frame style={{ width: 340, flexDirection: 'column', padding: 8 }}>
             {/* Limit Only Badge */}
-            <Frame style={{ 
+            <Frame style={{
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
@@ -309,8 +340,8 @@ export function TradeWindow({ onClose }: TradeWindowProps) {
             {/* Amount Input */}
             <Frame style={{ flexDirection: 'column', marginBottom: 8 }}>
               <label style={{ fontSize: fs(11), fontWeight: 'bold', marginBottom: 4 }}>Amount (BTC)</label>
-              <Frame style={{ 
-                background: 'white', 
+              <Frame style={{
+                background: 'white',
                 padding: '6px 8px',
                 borderTop: '2px solid #404040',
                 borderLeft: '2px solid #404040',
@@ -328,8 +359,8 @@ export function TradeWindow({ onClose }: TradeWindowProps) {
             {/* Price Input */}
             <Frame style={{ flexDirection: 'column', marginBottom: 8 }}>
               <label style={{ fontSize: fs(11), fontWeight: 'bold', marginBottom: 4 }}>Price (USDT)</label>
-              <Frame style={{ 
-                background: 'white', 
+              <Frame style={{
+                background: 'white',
                 padding: '6px 8px',
                 borderTop: '2px solid #404040',
                 borderLeft: '2px solid #404040',
@@ -386,7 +417,7 @@ export function TradeWindow({ onClose }: TradeWindowProps) {
             {/* Balance Info */}
             <Fieldset legend="Your Balance" style={{ marginBottom: 8, fontSize: fs(11) }}>
               {!isConnected ? (
-                <Frame style={{ 
+                <Frame style={{
                   padding: '8px 4px',
                   background: '#ffffcc',
                   border: '1px solid #cccc00',
@@ -412,7 +443,7 @@ export function TradeWindow({ onClose }: TradeWindowProps) {
             {/* Bottom Section with Tabs */}
             <Frame style={{ flex: 1, flexDirection: 'column' }}>
               {/* Tabs */}
-              <Frame style={{ 
+              <Frame style={{
                 display: 'flex',
                 marginBottom: 4,
                 borderTop: '2px solid white',
@@ -471,8 +502,8 @@ export function TradeWindow({ onClose }: TradeWindowProps) {
                     <tbody>
                       {recentTrades.map((trade, i) => (
                         <tr key={i} style={{ borderBottom: '1px solid #eee' }}>
-                          <td style={{ 
-                            textAlign: 'right', 
+                          <td style={{
+                            textAlign: 'right',
                             padding: '2px 4px',
                             color: trade.side === 'BUY' ? '#008000' : '#cc0000',
                             fontWeight: 'bold'
@@ -480,8 +511,8 @@ export function TradeWindow({ onClose }: TradeWindowProps) {
                             {trade.price.toLocaleString()}
                           </td>
                           <td style={{ textAlign: 'right', padding: '2px 4px' }}>{trade.amount.toFixed(4)}</td>
-                          <td style={{ 
-                            textAlign: 'center', 
+                          <td style={{
+                            textAlign: 'center',
                             padding: '2px 4px',
                             color: trade.side === 'BUY' ? '#008000' : '#cc0000',
                             fontSize: fs(9)
@@ -502,8 +533,8 @@ export function TradeWindow({ onClose }: TradeWindowProps) {
                       </span>
                     )}
                     {pair?.news?.slice(0, 10).map((item) => (
-                      <Frame key={item.id} style={{ 
-                        padding: '4px 6px', 
+                      <Frame key={item.id} style={{
+                        padding: '4px 6px',
                         background: '#fafafa',
                         borderBottom: '1px solid #eee',
                       }}>
@@ -513,8 +544,8 @@ export function TradeWindow({ onClose }: TradeWindowProps) {
                         <span style={{ fontSize: fs(9), color: '#666' }}>
                           {item.summary.length > 80 ? item.summary.slice(0, 80) + '...' : item.summary}
                         </span>
-                        <span style={{ 
-                          fontSize: fs(9), 
+                        <span style={{
+                          fontSize: fs(9),
                           fontWeight: 'bold',
                           color: directionColor(item.direction as NewsDirection),
                         }}>
