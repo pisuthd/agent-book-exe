@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Frame, Modal, Button, Input, Fieldset, RadioButton, TitleBar } from '@react95/core';
-import { CURRENT_PRICE, PRICE_CHANGE_24H, newsEvents } from '../mockData';
 import { useAppSettings } from '../context/AppSettingsContext';
+import { useMarketData } from '../hooks/useMarketData';
 import type { NewsDirection } from '../types';
 
 interface NewsWindowProps {
@@ -28,10 +28,57 @@ const directionColor = (dir: NewsDirection) => {
 
 export function NewsWindow({ onClose }: NewsWindowProps) {
   const { fs } = useAppSettings();
+  const { pair, loading, error, updatePrice, addNews, deleteNews, refetch } = useMarketData();
+  
   const [headline, setHeadline] = useState('');
+  const [summary, setSummary] = useState('');
   const [direction, setDirection] = useState<NewsDirection>('bullish');
-  const [magnitude, setMagnitude] = useState('3.5');
-  const [duration, setDuration] = useState('30');
+  const [magnitude, setMagnitude] = useState('1.0');
+  const [editingPrice, setEditingPrice] = useState(false);
+  const [priceInput, setPriceInput] = useState('');
+  const [priceDirection, setPriceDirection] = useState<'up' | 'down' | 'idle'>('idle');
+  const [lastPrice, setLastPrice] = useState<number | null>(null);
+
+  const handlePublish = async () => {
+    if (!headline.trim()) return;
+    await addNews(headline, summary, direction, parseFloat(magnitude) || 0);
+    setHeadline('');
+    setSummary('');
+    setMagnitude('1.0');
+  };
+
+  const handlePriceUpdate = async () => {
+    const newPrice = parseFloat(priceInput);
+    if (isNaN(newPrice) || newPrice <= 0) return;
+    await updatePrice(newPrice);
+    setEditingPrice(false);
+    setPriceInput('');
+  };
+
+  const handleQuickPrice = async (delta: number) => {
+    if (!pair) return;
+    const newPrice = pair.price + delta;
+    
+    // Track direction
+    if (newPrice > pair.price) {
+      setPriceDirection('up');
+    } else if (newPrice < pair.price) {
+      setPriceDirection('down');
+    }
+    
+    await updatePrice(newPrice);
+    
+    // Reset to idle after 2 seconds
+    setTimeout(() => setPriceDirection('idle'), 2000);
+  };
+
+  const getPriceEmoji = () => {
+    switch (priceDirection) {
+      case 'up': return '🟢';
+      case 'down': return '🔴';
+      default: return '🟡';
+    }
+  };
 
   return (
     <Modal
@@ -39,30 +86,75 @@ export function NewsWindow({ onClose }: NewsWindowProps) {
       icon={<span>📰</span>}
       title="News & Price Control"
       titleBarOptions={<TitleBar.Close onClick={onClose} />}
-      style={{ left: 140, top: 50, width: 560, height: 500 }}
+      style={{ left: 140, top: 50, width: 560, height: 520 }}
       buttons={[{ value: 'Close', onClick: onClose }]}
     >
-      <Modal.Content bg="white" style={{ overflow: 'auto' }}>
+      <Modal.Content bg="white" style={{ overflow: 'auto', padding: 8 }}>
+        
+        {/* Error State */}
+        {error && (
+          <Frame style={{ 
+            padding: 8, 
+            background: '#fff0f0', 
+            border: '1px solid #cc0000',
+            marginBottom: 8,
+          }}>
+            <span style={{ color: '#cc0000' }}>Error: {error}</span>
+            <Button style={{ marginLeft: 8, fontSize: fs(9) }} onClick={refetch}>Retry</Button>
+          </Frame>
+        )}
+
+        {/* Loading State */}
+        {loading && !pair && (
+          <Frame style={{ textAlign: 'center', padding: 20 }}>
+            <span>Loading market data...</span>
+          </Frame>
+        )}
+
         {/* Live Price */}
-        <Frame style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: 12,
-          marginBottom: 10,
-          padding: '6px 8px',
-          background: '#ffffcc',
-          border: '1px solid #cccc00',
-        }}>
-          <span style={{ fontSize: fs(12), fontWeight: 'bold' }}>🔴 LIVE PRICE:</span>
-          <span style={{ fontSize: fs(16), fontWeight: 'bold' }}>${CURRENT_PRICE.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
-          <span style={{ fontSize: fs(12), color: PRICE_CHANGE_24H >= 0 ? '#008000' : '#cc0000' }}>
-            {PRICE_CHANGE_24H >= 0 ? '+' : ''}{PRICE_CHANGE_24H}%
-          </span>
-          <span style={{ fontSize: fs(11), color: '#888' }}>Last tick: 1s ago</span>
-        </Frame>
+        {pair && (
+          <Frame style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 8,
+            marginBottom: 10,
+            padding: '6px 8px',
+            background: '#ffffcc',
+            border: '1px solid #cccc00',
+          }}>
+            <span style={{ fontSize: fs(11), fontWeight: 'bold' }}>{getPriceEmoji()} {pair.base}/{pair.quote}:</span>
+            
+            {editingPrice ? (
+              <>
+                <Input
+                  value={priceInput}
+                  onChange={(e) => setPriceInput(e.target.value)}
+                  placeholder={pair.price.toString()}
+                  style={{ width: 120, fontSize: fs(14) }}
+                  autoFocus
+                />
+                <Button style={{ fontSize: fs(10) }} onClick={handlePriceUpdate}>✓</Button>
+                <Button style={{ fontSize: fs(10) }} onClick={() => setEditingPrice(false)}>✕</Button>
+              </>
+            ) : (
+              <>
+                <span 
+                  style={{ fontSize: fs(16), fontWeight: 'bold', cursor: 'pointer' }}
+                  onClick={() => { setEditingPrice(true); setPriceInput(pair.price.toString()); }}
+                >
+                  ${pair.price.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                </span>
+                <Button style={{ fontSize: fs(9), padding: '2px 4px' }} onClick={() => handleQuickPrice(100)}>+100</Button>
+                <Button style={{ fontSize: fs(9), padding: '2px 4px' }} onClick={() => handleQuickPrice(-100)}>-100</Button>
+                <Button style={{ fontSize: fs(9), padding: '2px 4px' }} onClick={() => handleQuickPrice(1000)}>+1K</Button>
+                <Button style={{ fontSize: fs(9), padding: '2px 4px' }} onClick={() => handleQuickPrice(-1000)}>-1K</Button>
+              </>
+            )}
+          </Frame>
+        )}
 
         {/* Create News Event */}
-        <Fieldset legend="Create News Event" style={{ marginBottom: 10 }}>
+        <Fieldset legend="Publish News" style={{ marginBottom: 10 }}>
           <Frame style={{ marginBottom: 6 }}>
             <label style={{ fontSize: fs(11), display: 'block', marginBottom: 2 }}>Headline:</label>
             <Input
@@ -72,81 +164,77 @@ export function NewsWindow({ onClose }: NewsWindowProps) {
               style={{ width: '100%' }}
             />
           </Frame>
+          
+          <Frame style={{ marginBottom: 6 }}>
+            <label style={{ fontSize: fs(11), display: 'block', marginBottom: 2 }}>Summary (2-3 sentences):</label>
+            <Input
+              value={summary}
+              onChange={(e) => setSummary(e.target.value)}
+              placeholder="Institutional investors continue to accumulate..."
+              style={{ width: '100%', height: 50 }}
+            />
+          </Frame>
 
           <Frame style={{ display: 'flex', gap: 16, marginBottom: 6, alignItems: 'center' }}>
             <Frame>
               <label style={{ fontSize: fs(11), marginBottom: 4, display: 'block' }}>Direction:</label>
-              <Frame style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                <label style={{ display: 'flex', alignItems: 'center', gap: 2, fontSize: fs(12), cursor: 'pointer' }}>
-                  <RadioButton checked={direction === 'bullish'} onChange={() => setDirection('bullish')} />
-                  Bullish
-                </label>
-                <label style={{ display: 'flex', alignItems: 'center', gap: 2, fontSize: fs(12), cursor: 'pointer' }}>
-                  <RadioButton checked={direction === 'bearish'} onChange={() => setDirection('bearish')} />
-                  Bearish
-                </label>
-                <label style={{ display: 'flex', alignItems: 'center', gap: 2, fontSize: fs(12), cursor: 'pointer' }}>
-                  <RadioButton checked={direction === 'volatility'} onChange={() => setDirection('volatility')} />
-                  Volatility
-                </label>
+              <Frame style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                {(['bullish', 'bearish', 'neutral', 'volatility'] as const).map((dir) => (
+                  <label key={dir} style={{ display: 'flex', alignItems: 'center', gap: 2, fontSize: fs(10), cursor: 'pointer' }}>
+                    <RadioButton checked={direction === dir} onChange={() => setDirection(dir)} />
+                    {dir.charAt(0).toUpperCase() + dir.slice(1)}
+                  </label>
+                ))}
               </Frame>
             </Frame>
-          </Frame>
-
-          <Frame style={{ display: 'flex', gap: 8, marginBottom: 8 }}>
-            <Frame style={{ flex: 1 }}>
+            <Frame>
               <label style={{ fontSize: fs(11), display: 'block', marginBottom: 2 }}>Magnitude (%):</label>
-              <Input value={magnitude} onChange={(e) => setMagnitude(e.target.value)} style={{ width: '100%' }} />
-            </Frame>
-            <Frame style={{ flex: 1 }}>
-              <label style={{ fontSize: fs(11), display: 'block', marginBottom: 2 }}>Duration (seconds):</label>
-              <Input value={duration} onChange={(e) => setDuration(e.target.value)} style={{ width: '100%' }} />
+              <Input value={magnitude} onChange={(e) => setMagnitude(e.target.value)} style={{ width: 80 }} />
             </Frame>
           </Frame>
 
-          <Frame style={{ display: 'flex', gap: 4 }}>
-            <Button style={{ fontSize: fs(11) }}>📰 Publish News</Button>
-            <Button style={{ fontSize: fs(11) }}>🔀 Random Walk</Button>
-            <Button style={{ fontSize: fs(11) }}>💥 Flash Crash</Button>
-          </Frame>
+          <Button 
+            style={{ fontSize: fs(11), fontWeight: 'bold' }}
+            onClick={handlePublish}
+            disabled={!headline.trim()}
+          >
+            📰 Publish News
+          </Button>
         </Fieldset>
 
-        {/* Event History */}
-        <Fieldset legend="Event History" style={{ marginBottom: 10 }}>
-          <Frame style={{ flexDirection: 'column', gap: 8 }}>
-            {newsEvents.map((event, i) => (
-              <Frame key={i} style={{ paddingBottom: 8, borderBottom: i < newsEvents.length - 1 ? '1px solid #eee' : 'none' }}>
-                <Frame style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
-                  <span>📰</span>
-                  <span style={{ fontSize: fs(11), color: '#888' }}>{event.timestamp}</span>
-                  <strong style={{ fontSize: fs(12) }}>"{event.headline}"</strong>
-                  <span style={{
-                    color: directionColor(event.direction),
-                    fontWeight: 'bold',
-                    fontSize: fs(12),
-                  }}>
-                    {event.magnitudePct >= 0 ? '+' : ''}{event.magnitudePct}% {directionArrow(event.direction)}
-                  </span>
-                </Frame>
-                <Frame style={{ paddingLeft: 20, flexDirection: 'column', gap: 1 }}>
-                  {event.reactions.map((r, j) => (
-                    <span key={j} style={{ fontSize: fs(11), color: '#666' }}>
-                      → {r.agent}: {r.reaction}
+        {/* News List */}
+        <Fieldset legend={`News (${pair?.news?.length || 0})`}>
+          <Frame style={{ flexDirection: 'column', gap: 6, maxHeight: 200, overflow: 'auto' }}>
+            {pair?.news?.length === 0 && (
+              <span style={{ fontSize: fs(11), color: '#888' }}>No news yet. Publish one above!</span>
+            )}
+            {pair?.news?.map((item) => (
+              <Frame key={item.id} style={{ 
+                padding: '4px 6px', 
+                borderBottom: '1px solid #eee',
+                background: '#fafafa',
+              }}>
+                <Frame style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                  <Frame style={{ flexDirection: 'column', flex: 1 }}>
+                    <span style={{ fontSize: fs(11), fontWeight: 'bold' }}>"{item.headline}"</span>
+                    <span style={{ fontSize: fs(10), color: '#666', marginTop: 2 }}>{item.summary}</span>
+                    <span style={{
+                      fontSize: fs(10),
+                      color: directionColor(item.direction as NewsDirection),
+                      fontWeight: 'bold',
+                    }}>
+                      {item.magnitude >= 0 ? '+' : ''}{item.magnitude}% {directionArrow(item.direction as NewsDirection)}
                     </span>
-                  ))}
+                  </Frame>
+                  <Button
+                    style={{ fontSize: fs(9), padding: '0px 4px', minWidth: 'auto', color: '#cc0000' }}
+                    onClick={() => deleteNews(item.id)}
+                  >
+                    ✕
+                  </Button>
                 </Frame>
               </Frame>
             ))}
-          </Frame>
-        </Fieldset>
-
-        {/* Quick Presets */}
-        <Fieldset legend="Quick Presets">
-          <Frame style={{ display: 'flex', gap: 4 }}>
-            <Button style={{ color: '#008000', fontSize: fs(11) }}>📈 Pump +5%</Button>
-            <Button style={{ color: '#cc0000', fontSize: fs(11) }}>📉 Dump -5%</Button>
-            <Button style={{ color: '#cc8800', fontSize: fs(11) }}>🌊 Volatility</Button>
-            <Button style={{ color: '#cc0000', fontWeight: 'bold', fontSize: fs(11) }}>⚡ Flash Crash</Button>
           </Frame>
         </Fieldset>
       </Modal.Content>

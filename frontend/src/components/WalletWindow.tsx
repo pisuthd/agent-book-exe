@@ -20,9 +20,9 @@ const formatUSD = (value: number): string => {
 
 export function WalletWindow({ onClose }: WalletWindowProps) {
   const { fs } = useAppSettings();
-  const { address, isConnected, balances, totalUSD, mint, isMinting } = useTokenBalances();
+  const { isConnected, balances, totalUSD, mint, isMinting } = useTokenBalances();
 
-  const truncatedAddress = address ? `${address.slice(0, 6)}...${address.slice(-4)}` : null;
+  // const truncatedAddress = address ? `${address.slice(0, 6)}...${address.slice(-4)}` : null;
   const statusColor = isConnected ? '#006600' : '#cc0000';
   const statusBg = isConnected ? '#c0ffc0' : '#fff0f0';
 
