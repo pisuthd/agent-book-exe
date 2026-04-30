@@ -1,7 +1,10 @@
 import { useState } from 'react';
 import { Frame, Modal, Button, Input, Fieldset, TitleBar } from '@react95/core';
-import { asks, bids, recentTrades, CURRENT_PRICE, PRICE_CHANGE_24H } from '../mockData';
+import { asks, bids, recentTrades } from '../mockData';
 import { useAppSettings } from '../context/AppSettingsContext';
+import { useMarketData } from '../hooks/useMarketData';
+import { useTokenBalances } from '../hooks/useTokens';
+import type { NewsDirection } from '../types';
 
 interface OrderbookEntry {
   price: number;
@@ -31,17 +34,38 @@ function groupByPrice(entries: OrderbookEntry[]): GroupedEntry[] {
   return Object.values(grouped).sort((a, b) => b.price - a.price);
 }
 
+const directionColor = (dir: NewsDirection) => {
+  switch (dir) {
+    case 'bullish': return '#008000';
+    case 'bearish': return '#cc0000';
+    case 'neutral': return '#888';
+    case 'volatility': return '#cc8800';
+  }
+};
+
+const directionArrow = (dir: NewsDirection) => {
+  switch (dir) {
+    case 'bullish': return '▲';
+    case 'bearish': return '▼';
+    case 'neutral': return '─';
+    case 'volatility': return '⇅';
+  }
+};
+
 interface TradeWindowProps {
   onClose: () => void;
 }
 
 export function TradeWindow({ onClose }: TradeWindowProps) {
   const { fs } = useAppSettings();
+  const { pair } = useMarketData();
+  const { balances, isConnected } = useTokenBalances();
   const [side, setSide] = useState<'BUY' | 'SELL'>('BUY');
   const [amount, setAmount] = useState('0.50');
-  const [limitPrice, setLimitPrice] = useState(CURRENT_PRICE.toString());
-  const [orderType, setOrderType] = useState<'limit' | 'market'>('limit');
+  const [limitPrice, setLimitPrice] = useState(pair?.price?.toString() || '95000');
+  const [bottomTab, setBottomTab] = useState<'trades' | 'news'>('trades');
 
+  const currentPrice = pair?.price || 95000;
   const amountNum = parseFloat(amount) || 0;
   const priceNum = parseFloat(limitPrice) || 0;
   const estTotal = amountNum * priceNum;
@@ -52,6 +76,9 @@ export function TradeWindow({ onClose }: TradeWindowProps) {
   const totalAskSize = asks.reduce((sum, a) => sum + a.size, 0);
   const totalBidSize = bids.reduce((sum, b) => sum + b.size, 0);
   const totalLiquidity = totalAskSize + totalBidSize;
+
+  const btcBalance = balances.find(b => b.symbol === 'BTC')?.amount || 0;
+  const usdtBalance = balances.find(b => b.symbol === 'USDT')?.amount || 0;
 
   const handlePriceClick = (price: number) => {
     setLimitPrice(price.toString());
@@ -81,10 +108,7 @@ export function TradeWindow({ onClose }: TradeWindowProps) {
           gap: 20,
         }}>
           <span style={{ fontSize: fs(14), fontWeight: 'bold' }}>BTC/USDT</span>
-          <span style={{ fontSize: fs(20), fontWeight: 'bold' }}>${CURRENT_PRICE.toLocaleString()}</span>
-          <span style={{ fontSize: fs(12), color: PRICE_CHANGE_24H >= 0 ? '#00ff00' : '#ff6666' }}>
-            {PRICE_CHANGE_24H >= 0 ? '+' : ''}{PRICE_CHANGE_24H}%
-          </span>
+          <span style={{ fontSize: fs(20), fontWeight: 'bold' }}>${currentPrice.toLocaleString()}</span>
           <Frame style={{ width: 1, height: 16, background: 'rgba(255,255,255,0.3)' }} />
           <span style={{ fontSize: fs(11) }}>24h Vol: <strong>1,234.56 BTC</strong></span>
           <span style={{ fontSize: fs(11) }}>High: <strong>$65,000</strong></span>
@@ -165,7 +189,7 @@ export function TradeWindow({ onClose }: TradeWindowProps) {
               justifyContent: 'space-between',
               alignItems: 'center',
             }}>
-              <span style={{ fontSize: fs(12) }}>Mid Price: <strong>${CURRENT_PRICE.toLocaleString()}</strong></span>
+              <span style={{ fontSize: fs(12) }}>Mid Price: <strong>${currentPrice.toLocaleString()}</strong></span>
               <span style={{ fontSize: fs(12), fontWeight: 'bold', color: '#008000' }}>SPREAD: $32</span>
             </Frame>
 
@@ -231,34 +255,19 @@ export function TradeWindow({ onClose }: TradeWindowProps) {
 
           {/* Trade Panel - Right Panel */}
           <Frame style={{ width: 340, flexDirection: 'column', padding: 8 }}>
-            {/* Order Type Toggle */}
-            <Frame style={{ display: 'flex', marginBottom: 8 }}>
-              <Button
-                onClick={() => setOrderType('limit')}
-                style={{
-                  flex: 1,
-                  background: orderType === 'limit' ? '#000080' : '#c0c0c0',
-                  color: 'white',
-                  fontWeight: 'bold',
-                  fontSize: fs(11),
-                  padding: '6px 0',
-                }}
-              >
-                Limit
-              </Button>
-              <Button
-                onClick={() => setOrderType('market')}
-                style={{
-                  flex: 1,
-                  background: orderType === 'market' ? '#000080' : '#c0c0c0',
-                  color: 'white',
-                  fontWeight: 'bold',
-                  fontSize: fs(11),
-                  padding: '6px 0',
-                }}
-              >
-                Market
-              </Button>
+            {/* Limit Only Badge */}
+            <Frame style={{ 
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              padding: '4px 0',
+              marginBottom: 8,
+              background: '#000080',
+              color: 'white',
+              fontWeight: 'bold',
+              fontSize: fs(11),
+            }}>
+              LIMIT ORDER
             </Frame>
 
             {/* BUY/SELL Toggle */}
@@ -316,26 +325,24 @@ export function TradeWindow({ onClose }: TradeWindowProps) {
               </Frame>
             </Frame>
 
-            {/* Price Input - only for limit orders */}
-            {orderType === 'limit' && (
-              <Frame style={{ flexDirection: 'column', marginBottom: 8 }}>
-                <label style={{ fontSize: fs(11), fontWeight: 'bold', marginBottom: 4 }}>Price (USDT)</label>
-                <Frame style={{ 
-                  background: 'white', 
-                  padding: '6px 8px',
-                  borderTop: '2px solid #404040',
-                  borderLeft: '2px solid #404040',
-                  borderRight: '2px solid white',
-                  borderBottom: '2px solid white',
-                }}>
-                  <Input
-                    value={limitPrice}
-                    onChange={(e) => setLimitPrice(e.target.value)}
-                    style={{ width: '100%', border: 'none', fontSize: fs(14) }}
-                  />
-                </Frame>
+            {/* Price Input */}
+            <Frame style={{ flexDirection: 'column', marginBottom: 8 }}>
+              <label style={{ fontSize: fs(11), fontWeight: 'bold', marginBottom: 4 }}>Price (USDT)</label>
+              <Frame style={{ 
+                background: 'white', 
+                padding: '6px 8px',
+                borderTop: '2px solid #404040',
+                borderLeft: '2px solid #404040',
+                borderRight: '2px solid white',
+                borderBottom: '2px solid white',
+              }}>
+                <Input
+                  value={limitPrice}
+                  onChange={(e) => setLimitPrice(e.target.value)}
+                  style={{ width: '100%', border: 'none', fontSize: fs(14) }}
+                />
               </Frame>
-            )}
+            </Frame>
 
             {/* Order Summary */}
             <Fieldset legend="Order Summary" style={{ marginBottom: 8, fontSize: fs(11) }}>
@@ -369,81 +376,154 @@ export function TradeWindow({ onClose }: TradeWindowProps) {
                 borderRight: '2px solid #404040',
                 borderBottom: '2px solid #404040',
               }}
+              disabled={!isConnected}
             >
-              {orderType === 'market' ? 'MARKET BUY' : `BUY BTC`}
+              {side === 'BUY' ? 'BUY BTC' : 'SELL BTC'}
             </Button>
 
             <Frame style={{ height: 1, background: '#808080', margin: '12px 0' }} />
 
             {/* Balance Info */}
             <Fieldset legend="Your Balance" style={{ marginBottom: 8, fontSize: fs(11) }}>
-              <Frame style={{ flexDirection: 'column', gap: 4 }}>
-                <Frame style={{ display: 'flex', justifyContent: 'space-between' }}>
-                  <span>USDT:</span>
-                  <span style={{ fontWeight: 'bold' }}>10,000.00</span>
+              {!isConnected ? (
+                <Frame style={{ 
+                  padding: '8px 4px',
+                  background: '#ffffcc',
+                  border: '1px solid #cccc00',
+                }}>
+                  <span style={{ fontSize: fs(10), color: '#cc8800' }}>
+                    ⚠️ Connect wallet to see real balances
+                  </span>
                 </Frame>
-                <Frame style={{ display: 'flex', justifyContent: 'space-between' }}>
-                  <span>BTC:</span>
-                  <span style={{ fontWeight: 'bold' }}>1.2345</span>
+              ) : (
+                <Frame style={{ flexDirection: 'column', gap: 4 }}>
+                  <Frame style={{ display: 'flex', justifyContent: 'space-between' }}>
+                    <span>USDT:</span>
+                    <span style={{ fontWeight: 'bold' }}>{usdtBalance.toFixed(2)}</span>
+                  </Frame>
+                  <Frame style={{ display: 'flex', justifyContent: 'space-between' }}>
+                    <span>BTC:</span>
+                    <span style={{ fontWeight: 'bold' }}>{btcBalance.toFixed(4)}</span>
+                  </Frame>
                 </Frame>
-                <Frame style={{ display: 'flex', justifyContent: 'space-between' }}>
-                  <span>Open Orders:</span>
-                  <span>3</span>
-                </Frame>
-              </Frame>
+              )}
             </Fieldset>
 
-            {/* Recent Trades */}
+            {/* Bottom Section with Tabs */}
             <Frame style={{ flex: 1, flexDirection: 'column' }}>
+              {/* Tabs */}
               <Frame style={{ 
-                padding: '4px 8px', 
-                background: '#808080', 
-                color: 'white', 
-                fontSize: fs(12), 
-                fontWeight: 'bold',
+                display: 'flex',
                 marginBottom: 4,
                 borderTop: '2px solid white',
                 borderLeft: '2px solid white',
                 borderRight: '2px solid #404040',
                 borderBottom: '2px solid #404040',
               }}>
-                Recent Trades
+                <Button
+                  onClick={() => setBottomTab('trades')}
+                  style={{
+                    flex: 1,
+                    background: bottomTab === 'trades' ? '#000080' : '#808080',
+                    color: 'white',
+                    fontWeight: 'bold',
+                    fontSize: fs(11),
+                    padding: '4px 0',
+                    borderTop: '2px solid white',
+                    borderLeft: '2px solid white',
+                    borderRight: bottomTab === 'trades' ? '2px solid white' : 'none',
+                    borderBottom: 'none',
+                  }}
+                >
+                  Recent Trades
+                </Button>
+                <Button
+                  onClick={() => setBottomTab('news')}
+                  style={{
+                    flex: 1,
+                    background: bottomTab === 'news' ? '#000080' : '#808080',
+                    color: 'white',
+                    fontWeight: 'bold',
+                    fontSize: fs(11),
+                    padding: '4px 0',
+                    borderTop: '2px solid white',
+                    borderRight: '2px solid #404040',
+                    borderBottom: 'none',
+                  }}
+                >
+                  Recent News ({pair?.news?.length || 0})
+                </Button>
               </Frame>
-              <Frame style={{ flex: 1, overflow: 'auto', background: 'white' }}>
-                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: fs(10) }}>
-                  <thead>
-                    <tr style={{ background: '#c0c0c0' }}>
-                      <th style={{ textAlign: 'right', padding: '2px 4px' }}>Price</th>
-                      <th style={{ textAlign: 'right', padding: '2px 4px' }}>Size</th>
-                      <th style={{ textAlign: 'center', padding: '2px 4px' }}>Side</th>
-                      <th style={{ textAlign: 'right', padding: '2px 4px' }}>Time</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {recentTrades.map((trade, i) => (
-                      <tr key={i} style={{ borderBottom: '1px solid #eee' }}>
-                        <td style={{ 
-                          textAlign: 'right', 
-                          padding: '2px 4px',
-                          color: trade.side === 'BUY' ? '#008000' : '#cc0000',
-                          fontWeight: 'bold'
-                        }}>
-                          {trade.price.toLocaleString()}
-                        </td>
-                        <td style={{ textAlign: 'right', padding: '2px 4px' }}>{trade.amount.toFixed(4)}</td>
-                        <td style={{ 
-                          textAlign: 'center', 
-                          padding: '2px 4px',
-                          color: trade.side === 'BUY' ? '#008000' : '#cc0000',
-                          fontSize: fs(9)
-                        }}>
-                          {trade.side}
-                        </td>
-                        <td style={{ textAlign: 'right', padding: '2px 4px', color: '#888' }}>{trade.time}</td>
+
+              {/* Tab Content */}
+              <Frame style={{ flex: 1, overflow: 'auto', background: 'white', border: '2px inset' }}>
+                {bottomTab === 'trades' ? (
+                  /* Recent Trades */
+                  <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: fs(10) }}>
+                    <thead>
+                      <tr style={{ background: '#c0c0c0' }}>
+                        <th style={{ textAlign: 'right', padding: '2px 4px' }}>Price</th>
+                        <th style={{ textAlign: 'right', padding: '2px 4px' }}>Size</th>
+                        <th style={{ textAlign: 'center', padding: '2px 4px' }}>Side</th>
+                        <th style={{ textAlign: 'right', padding: '2px 4px' }}>Time</th>
                       </tr>
+                    </thead>
+                    <tbody>
+                      {recentTrades.map((trade, i) => (
+                        <tr key={i} style={{ borderBottom: '1px solid #eee' }}>
+                          <td style={{ 
+                            textAlign: 'right', 
+                            padding: '2px 4px',
+                            color: trade.side === 'BUY' ? '#008000' : '#cc0000',
+                            fontWeight: 'bold'
+                          }}>
+                            {trade.price.toLocaleString()}
+                          </td>
+                          <td style={{ textAlign: 'right', padding: '2px 4px' }}>{trade.amount.toFixed(4)}</td>
+                          <td style={{ 
+                            textAlign: 'center', 
+                            padding: '2px 4px',
+                            color: trade.side === 'BUY' ? '#008000' : '#cc0000',
+                            fontSize: fs(9)
+                          }}>
+                            {trade.side}
+                          </td>
+                          <td style={{ textAlign: 'right', padding: '2px 4px', color: '#888' }}>{trade.time}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                ) : (
+                  /* News */
+                  <Frame style={{ flexDirection: 'column', padding: 4, gap: 4 }}>
+                    {pair?.news?.length === 0 && (
+                      <span style={{ fontSize: fs(10), color: '#888', textAlign: 'center', padding: 8 }}>
+                        No news available
+                      </span>
+                    )}
+                    {pair?.news?.slice(0, 10).map((item) => (
+                      <Frame key={item.id} style={{ 
+                        padding: '4px 6px', 
+                        background: '#fafafa',
+                        borderBottom: '1px solid #eee',
+                      }}>
+                        <span style={{ fontSize: fs(10), fontWeight: 'bold', display: 'block' }}>
+                          "{item.headline}"
+                        </span>
+                        <span style={{ fontSize: fs(9), color: '#666' }}>
+                          {item.summary.length > 80 ? item.summary.slice(0, 80) + '...' : item.summary}
+                        </span>
+                        <span style={{ 
+                          fontSize: fs(9), 
+                          fontWeight: 'bold',
+                          color: directionColor(item.direction as NewsDirection),
+                        }}>
+                          {item.magnitude >= 0 ? '+' : ''}{item.magnitude}% {directionArrow(item.direction as NewsDirection)}
+                        </span>
+                      </Frame>
                     ))}
-                  </tbody>
-                </table>
+                  </Frame>
+                )}
               </Frame>
             </Frame>
           </Frame>

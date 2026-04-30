@@ -37,7 +37,6 @@ export function NewsWindow({ onClose }: NewsWindowProps) {
   const [editingPrice, setEditingPrice] = useState(false);
   const [priceInput, setPriceInput] = useState('');
   const [priceDirection, setPriceDirection] = useState<'up' | 'down' | 'idle'>('idle');
-  const [lastPrice, setLastPrice] = useState<number | null>(null);
 
   const handlePublish = async () => {
     if (!headline.trim()) return;
