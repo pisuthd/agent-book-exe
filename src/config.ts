@@ -1,8 +1,10 @@
 import { sepolia } from 'viem/chains'
 import { createPublicClient, createWalletClient, http, type PublicClient, type WalletClient } from 'viem';
 import { privateKeyToAccount, generatePrivateKey, type Account } from 'viem/accounts';
-import { toHex } from 'viem';
 import { getPeerPrivateKey, setPeerPrivateKey, peerExists } from './agent-registry';
+
+// Backend configuration
+export const BACKEND_URL = process.env.BACKEND_URL || 'http://localhost:3001';
 
 // Sepolia configuration
 export const config = {

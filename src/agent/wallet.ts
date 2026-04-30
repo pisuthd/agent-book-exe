@@ -233,6 +233,19 @@ export class WalletAgent {
         }
     }
 
+    // Sign a message
+    async signMessage(message: string): Promise<string> {
+        try {
+            const signature = await walletClient.signMessage({
+                account: account,
+                message: message
+            });
+            return signature;
+        } catch (error: any) {
+            throw new Error(`Failed to sign message: ${error.message}`);
+        }
+    }
+
     // Mint mock tokens
     async mintTokens(tokenSymbol: string, amount: string) {
         const symbol = tokenSymbol.toUpperCase();

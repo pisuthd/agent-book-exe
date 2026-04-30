@@ -33,6 +33,17 @@ db.exec(`
     public_key TEXT UNIQUE NOT NULL,
     created_at TEXT DEFAULT CURRENT_TIMESTAMP
   );
+
+  CREATE TABLE IF NOT EXISTS orders (
+    id TEXT PRIMARY KEY,
+    address TEXT NOT NULL,
+    peer_id TEXT NOT NULL,
+    side TEXT NOT NULL CHECK(side IN ('bid', 'ask')),
+    price REAL NOT NULL,
+    size REAL NOT NULL,
+    signature TEXT NOT NULL,
+    created_at TEXT DEFAULT CURRENT_TIMESTAMP
+  );
 `);
 
 // Seed data function
@@ -144,6 +155,34 @@ export function addPeer(publicKey) {
 
 export function deletePeer(id) {
   return db.prepare('DELETE FROM peers WHERE id = ?').run(id);
+}
+
+// Helper functions - Orders
+export function getAllOrders() {
+  return db.prepare('SELECT * FROM orders ORDER BY created_at DESC').all();
+}
+
+export function getOrderById(id) {
+  return db.prepare('SELECT * FROM orders WHERE id = ?').get(id);
+}
+
+export function getOrdersByAddress(address) {
+  return db.prepare('SELECT * FROM orders WHERE address = ? ORDER BY created_at DESC').all(address);
+}
+
+export function addOrder(id, address, peerId, side, price, size, signature) {
+  const stmt = db.prepare(`
+    INSERT INTO orders (id, address, peer_id, side, price, size, signature) 
+    VALUES (?, ?, ?, ?, ?, ?, ?)
+  `);
+  stmt.run(id, address, peerId, side, price, size, signature);
+  return getOrderById(id);
+}
+
+export function deleteOrder(id, address) {
+  // Only delete if address matches (verify ownership)
+  const stmt = db.prepare('DELETE FROM orders WHERE id = ? AND address = ?');
+  return stmt.run(id, address);
 }
 
 export default db;

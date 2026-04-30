@@ -1,8 +1,7 @@
 import { WalletAgent } from "../../agent/wallet";
 import { type McpTool } from "../../types";
-import { getPeerId } from "../../config";
-import { getOrders } from "../../agent-orders";
-
+import { getPeerId, BACKEND_URL } from "../../config";
+ 
 export const GetOrdersTool: McpTool = {
     name: "get_my_orders",
     description: "Get all orders for the current peer (bids and asks)",
@@ -12,10 +11,16 @@ export const GetOrdersTool: McpTool = {
     handler: async (agent: WalletAgent, input: Record<string, any>) => {
         try {
             const peerId = getPeerId();
-            const orders = getOrders(peerId);
 
-            const bids = orders.filter(o => o.side === 'bid').sort((a, b) => b.price - a.price);
-            const asks = orders.filter(o => o.side === 'ask').sort((a, b) => a.price - b.price);
+            // Get orders from backend by wallet address
+            const response = await fetch(`${BACKEND_URL}/api/orders/${agent.address}`);
+            if (!response.ok) {
+                throw new Error(`Backend error: ${response.statusText}`);
+            }
+            const orders: any = await response.json();
+
+            const bids = orders.filter((o: any) => o.side === 'bid').sort((a: any, b: any) => b.price - a.price);
+            const asks = orders.filter((o: any) => o.side === 'ask').sort((a: any, b: any) => a.price - b.price);
 
             return {
                 status: "success",

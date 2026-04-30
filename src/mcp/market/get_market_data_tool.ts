@@ -1,8 +1,7 @@
 import { WalletAgent } from "../../agent/wallet";
 import { type McpTool } from "../../types";
+import { BACKEND_URL } from "../../config";
 
-// Market API configuration
-const MARKET_API_URL = process.env.MARKET_API_URL || 'http://localhost:3001';
 const DEFAULT_PAIR = 'BTCUSDT';
 
 interface MarketData {
@@ -30,7 +29,7 @@ export const GetMarketDataTool: McpTool = {
     },
     handler: async (agent: WalletAgent, input: Record<string, any>) => {
         try {
-            const response = await fetch(`${MARKET_API_URL}/api/pairs/${DEFAULT_PAIR}`);
+            const response = await fetch(`${BACKEND_URL}/api/pairs/${DEFAULT_PAIR}`);
             
             if (!response.ok) {
                 throw new Error(`HTTP ${response.status}`);

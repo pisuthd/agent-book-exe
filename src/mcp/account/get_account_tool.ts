@@ -1,7 +1,6 @@
 import { WalletAgent } from "../../agent/wallet";
 import { type McpTool } from "../../types";
 import { getPeerId } from "../../config";
-import { getPeerAddress } from "../../agent-registry";
 
 export const GetAccountTool: McpTool = {
     name: "get_account",

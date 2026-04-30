@@ -1,8 +1,9 @@
 import { z } from "zod";
 import { WalletAgent } from "../../agent/wallet";
 import { type McpTool } from "../../types";
-import { getPeerId } from "../../config";
-import { cancelOrder, getOrders } from "../../agent-orders";
+import { getPeerId, BACKEND_URL } from "../../config";
+
+
 
 export const CancelOrderTool: McpTool = {
     name: "cancel_order",
@@ -20,25 +21,33 @@ export const CancelOrderTool: McpTool = {
             }
 
             const peerId = getPeerId();
-            
-            // Check if order exists
-            const orders = getOrders(peerId);
-            const order = orders.find(o => o.id === order_id);
-            
-            if (!order) {
-                throw new Error(`Order ${order_id} not found`);
-            }
+            const timestamp = Date.now().toString();
 
-            const success = cancelOrder(peerId, order_id);
+            // Sign the cancel message
+            const message = JSON.stringify({ action: 'cancel_order', order_id, timestamp });
+            const signature = await agent.signMessage(message);
 
-            if (!success) {
-                throw new Error('Failed to cancel order');
+            // Cancel on backend
+            const response = await fetch(`${BACKEND_URL}/api/orders/${order_id}`, {
+                method: 'DELETE',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    address: agent.address,
+                    signature,
+                    timestamp
+                })
+            });
+
+            if (!response.ok) {
+                const errorData: any = await response.json();
+                throw new Error(errorData.error || `Backend error: ${response.statusText}`);
             }
 
             return {
                 status: "success",
-                message: `✅ Order cancelled: ${order.side.toUpperCase()} ${order.size} BTC @ ${order.price} USDT`,
-                cancelled_order_id: order_id
+                message: `✅ Order cancelled: ${order_id}`,
+                cancelled_order_id: order_id,
+                peer_id: peerId
             };
         } catch (error: any) {
             throw new Error(`Failed to cancel order: ${error.message}`);

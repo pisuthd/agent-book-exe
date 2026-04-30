@@ -1,8 +1,8 @@
 import { z } from "zod";
 import { WalletAgent } from "../../agent/wallet";
 import { type McpTool } from "../../types";
-import { getPeerId } from "../../config";
-import { addOrder } from "../../agent-orders";
+import { getPeerId, BACKEND_URL } from "../../config";
+ 
 
 export const SubmitOrderTool: McpTool = {
     name: "submit_order",
@@ -32,18 +32,45 @@ export const SubmitOrderTool: McpTool = {
             }
 
             const peerId = getPeerId();
-            const order = addOrder(peerId, side, price, size);
+            const timestamp = Date.now().toString();
+
+            // Sign the order message
+            const message = JSON.stringify({ action: 'submit_order', side, price, size, timestamp, peer_id });
+            const signature = await agent.signMessage(message);
+
+            // Submit to backend
+            const response = await fetch(`${BACKEND_URL}/api/orders`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    address: agent.address,
+                    peer_id: peerId,
+                    side,
+                    price,
+                    size,
+                    signature,
+                    timestamp
+                })
+            });
+
+            if (!response.ok) {
+                const errorData: any = await response.json();
+                throw new Error(errorData.error || `Backend error: ${response.statusText}`);
+            }
+
+            const order: any = await response.json();
 
             return {
                 status: "success",
                 message: `✅ Order submitted: ${side.toUpperCase()} ${size} BTC @ ${price} USDT`,
                 order_id: order.id,
+                peer_id: peerId,
                 order: {
                     id: order.id,
                     side: order.side,
                     price: order.price,
                     size: order.size,
-                    created_at: order.createdAt
+                    created_at: order.created_at
                 }
             };
         } catch (error: any) {
