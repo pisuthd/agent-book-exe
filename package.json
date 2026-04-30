@@ -17,13 +17,14 @@
         "build": "tsup",
         "prepare": "npm run build",
         "test": "jest",
-        "dev": "ts-node src/index.ts"
+        "dev": "ts-node src/index.ts",
+        "register-ens": "tsx scripts/register-ens.ts"
     },
     "dependencies": {
-        "viem": "^2.21.0",
-        "zod": "^3.23.8",
         "@modelcontextprotocol/sdk": "^1.10.2",
-        "dotenv": "^16.4.5"
+        "dotenv": "^16.4.5",
+        "viem": "^2.21.0",
+        "zod": "^3.23.8"
     },
     "devDependencies": {
         "@types/node": "^20.14.0",
@@ -31,6 +32,7 @@
         "ts-jest": "^29.1.5",
         "ts-node": "^10.9.2",
         "tsup": "^8.4.0",
+        "tsx": "^4.21.0",
         "typescript": "^5.8.3"
     }
 }
