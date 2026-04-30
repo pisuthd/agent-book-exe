@@ -35,7 +35,7 @@ export const SubmitOrderTool: McpTool = {
             const timestamp = Date.now().toString();
 
             // Sign the order message
-            const message = JSON.stringify({ action: 'submit_order', side, price, size, timestamp, peer_id });
+            const message = JSON.stringify({ action: 'submit_order', side, price, size, timestamp, peer_id: peerId });
             const signature = await agent.signMessage(message);
 
             // Submit to backend
