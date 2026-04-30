@@ -13,8 +13,8 @@ export const config = {
     nativeCurrency: 'ETH'
 };
 
-// Get or create agent ID from environment
-const getAgentId = (): string => {
+// Get agent ID from environment
+export const getAgentId = (): string => {
     const agentId = process.env.AGENT_ID;
     if (!agentId) {
         throw new Error('AGENT_ID environment variable is required');
