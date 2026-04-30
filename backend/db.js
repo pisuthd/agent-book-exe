@@ -185,4 +185,21 @@ export function deleteOrder(id, address) {
   return stmt.run(id, address);
 }
 
+export function reduceOrderSize(id, amount) {
+  // Reduce order size by amount, delete if fully filled
+  const order = getOrderById(id);
+  if (!order) return null;
+  
+  const newSize = order.size - amount;
+  if (newSize <= 0) {
+    // Fully filled - delete the order
+    db.prepare('DELETE FROM orders WHERE id = ?').run(id);
+    return { id, deleted: true, remainingSize: 0 };
+  } else {
+    // Partially filled - update size
+    db.prepare('UPDATE orders SET size = ? WHERE id = ?').run(newSize, id);
+    return { id, deleted: false, remainingSize: newSize };
+  }
+}
+
 export default db;

@@ -6,6 +6,7 @@ import { useAppSettings } from '../context/AppSettingsContext';
 import { useMarketData } from '../hooks/useMarketData';
 import { useTokenBalances } from '../hooks/useTokens';
 import { useOrders } from '../hooks/useOrders';
+import { useSettleTrade } from '../hooks/useSettleTrade';
 import type { NewsDirection } from '../types';
 
 const directionColor = (dir: NewsDirection) => {
@@ -59,12 +60,14 @@ function AgentAddresses({ addresses }: { addresses: string[] }) {
 export function TradeWindow({ onClose }: TradeWindowProps) {
   const { fs } = useAppSettings();
   const { pair } = useMarketData();
-  const { balances, isConnected } = useTokenBalances();
+  const { balances, isConnected, refetchAll } = useTokenBalances();
   const { aggregated, loading, error, refetch } = useOrders();
+  const { settleTrade, loading: settling } = useSettleTrade();
   const [side, setSide] = useState<'BUY' | 'SELL'>('BUY');
   const [amount, setAmount] = useState('0.50');
   const [limitPrice, setLimitPrice] = useState(pair?.price?.toString() || '95000');
   const [bottomTab, setBottomTab] = useState<'trades' | 'news'>('trades');
+  const [settleStatus, setSettleStatus] = useState<string | null>(null);
 
   const currentPrice = pair?.price || 95000;
   const amountNum = parseFloat(amount) || 0;
@@ -83,6 +86,25 @@ export function TradeWindow({ onClose }: TradeWindowProps) {
 
   const handlePriceClick = (price: number) => {
     setLimitPrice(price.toString());
+  };
+
+  const handleSettle = async () => {
+    if (!isConnected || amountNum <= 0 || priceNum <= 0) return;
+    
+    setSettleStatus('Processing...');
+    const result = await settleTrade({
+      side: side === 'BUY' ? 'buy' : 'sell',
+      size: amountNum,
+      price: priceNum,
+    });
+    
+    if (result.success) {
+      setSettleStatus(`✅ Trade executed! Tx: ${result.txHash?.slice(0, 10)}...`);
+      refetch();
+      refetchAll();
+    } else {
+      setSettleStatus(`❌ ${result.error}`);
+    }
   };
 
   return (
@@ -395,6 +417,7 @@ export function TradeWindow({ onClose }: TradeWindowProps) {
 
             {/* Execute Button */}
             <Button
+              onClick={handleSettle}
               style={{
                 width: '100%',
                 background: side === 'BUY' ? '#008000' : '#cc0000',
@@ -407,10 +430,23 @@ export function TradeWindow({ onClose }: TradeWindowProps) {
                 borderRight: '2px solid #404040',
                 borderBottom: '2px solid #404040',
               }}
-              disabled={!isConnected}
+              disabled={!isConnected || settling || amountNum <= 0}
             >
-              {side === 'BUY' ? 'BUY BTC' : 'SELL BTC'}
+              {settling ? 'PROCESSING...' : side === 'BUY' ? 'BUY BTC' : 'SELL BTC'}
             </Button>
+
+            {/* Settle Status */}
+            {settleStatus && (
+              <Frame style={{
+                padding: '6px 8px',
+                marginTop: 4,
+                background: settleStatus.startsWith('✅') ? '#f0fff0' : '#fff0f0',
+                border: `1px solid ${settleStatus.startsWith('✅') ? '#00aa00' : '#cc0000'}`,
+                fontSize: fs(10),
+              }}>
+                {settleStatus}
+              </Frame>
+            )}
 
             <Frame style={{ height: 1, background: '#808080', margin: '12px 0' }} />
 
@@ -439,6 +475,7 @@ export function TradeWindow({ onClose }: TradeWindowProps) {
                 </Frame>
               )}
             </Fieldset>
+ 
 
             {/* Bottom Section with Tabs */}
             <Frame style={{ flex: 1, flexDirection: 'column' }}>

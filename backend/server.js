@@ -6,7 +6,7 @@ import {
   seedData, getAllPairs, getPair, updatePairPrice, 
   getNewsForPair, addNews, deleteNews, 
   getAllPeersFromDb, addPeer, deletePeer,
-  getAllOrders, getOrderById, getOrdersByAddress, addOrder, deleteOrder 
+  getAllOrders, getOrderById, getOrdersByAddress, addOrder, deleteOrder, reduceOrderSize 
 } from './db.js';
 
 const app = express();
@@ -317,6 +317,154 @@ app.delete('/api/orders/:id', (req, res) => {
     }
     
     res.json({ success: true, order_id: orderId });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ============ SETTLE ============
+
+// POST settle trade
+app.post('/api/settle', (req, res) => {
+  try {
+    const { user_address, side, price, size } = req.body;
+    
+    if (!user_address || !side || price === undefined || !size) {
+      return res.status(400).json({ error: 'Missing required fields: user_address, side, price, size' });
+    }
+    
+    // Validate address
+    if (!/^0x[a-fA-F0-9]{40}$/.test(user_address)) {
+      return res.status(400).json({ error: 'Invalid address format' });
+    }
+    
+    // Validate side
+    if (!['buy', 'sell'].includes(side.toLowerCase())) {
+      return res.status(400).json({ error: 'Side must be buy or sell' });
+    }
+    
+    if (price <= 0 || size <= 0) {
+      return res.status(400).json({ error: 'Price and size must be positive' });
+    }
+    
+    const isBuy = side.toLowerCase() === 'buy';
+    
+    // Get all orders and match
+    const allOrders = getAllOrders();
+    
+    // Filter matching orders
+    const matchingOrders = allOrders.filter(order => {
+      if (isBuy) {
+        // User wants to BUY (bid) - match against ASKs
+        return order.side === 'ask' && parseFloat(order.price) <= price;
+      } else {
+        // User wants to SELL (ask) - match against BIDs
+        return order.side === 'bid' && parseFloat(order.price) >= price;
+      }
+    }).sort((a, b) => {
+      // Sort by price (best first)
+      if (isBuy) {
+        return parseFloat(a.price) - parseFloat(b.price); // lowest asks first
+      } else {
+        return parseFloat(b.price) - parseFloat(a.price); // highest bids first
+      }
+    });
+    
+    if (matchingOrders.length === 0) {
+      return res.status(404).json({ error: 'No matching orders found' });
+    }
+    
+    // Calculate fills (aggressive partial fill)
+    let remainingSize = size;
+    const fills = [];
+    
+    for (const order of matchingOrders) {
+      if (remainingSize <= 0) break;
+      
+      const orderSize = parseFloat(order.size);
+      const orderPrice = parseFloat(order.price);
+      const fillSize = Math.min(remainingSize, orderSize);
+      
+      fills.push({
+        order_id: order.id, // Include order ID for reducing later!
+        agent: order.address,
+        baseAmount: fillSize, // BTC amount
+        quoteAmount: fillSize * orderPrice, // USDT amount
+        fill_amount: fillSize, // Same as baseAmount for BTC
+      });
+      
+      remainingSize -= fillSize;
+    }
+    
+    if (fills.length === 0) {
+      return res.status(404).json({ error: 'Could not create fills' });
+    }
+    
+    const totalBase = fills.reduce((sum, f) => sum + f.baseAmount, 0);
+    const totalQuote = fills.reduce((sum, f) => sum + f.quoteAmount, 0);
+    
+    // Deadline: 5 minutes from now
+    const deadline = Math.floor(Date.now() / 1000) + 5 * 60;
+    
+    res.json({
+      success: true,
+      isBuy,
+      user_address: user_address.toLowerCase(),
+      fills,
+      total_base: totalBase,
+      total_quote: totalQuote,
+      filled_size: totalBase,
+      remaining_size: remainingSize > 0 ? remainingSize : 0,
+      deadline,
+      // Token addresses (Sepolia)
+      baseToken: '0x2Ad531B1fE90beF60F8C20d85092119C84904a76', // WBTC
+      quoteToken: '0x709bc83E7c65Dc9D4B4B24DDfE24D117DEde9924', // USDT 
+      settlementContract: '0xe3CeB910F779dE87F4716f9290dC41FCdd85b45B',
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// POST reduce order size (call after successful settlement)
+app.post('/api/orders/reduce', (req, res) => {
+  try {
+    const { fills } = req.body;
+    
+    if (!fills || !Array.isArray(fills)) {
+      return res.status(400).json({ error: 'Missing required field: fills (array of {order_id, fill_amount})' });
+    }
+    
+    const results = [];
+    
+    for (const fill of fills) {
+      const { order_id, fill_amount } = fill;
+      
+      if (!order_id || !fill_amount) {
+        results.push({ order_id, error: 'Missing order_id or fill_amount' });
+        continue;
+      }
+      
+      const order = getOrderById(order_id);
+      if (!order) {
+        results.push({ order_id, error: 'Order not found' });
+        continue;
+      }
+      
+      const result = reduceOrderSize(order_id, fill_amount);
+      
+      if (result) {
+        results.push({
+          order_id,
+          deleted: result.deleted,
+          remaining_size: result.remainingSize,
+        });
+      } else {
+        results.push({ order_id, error: 'Failed to reduce order' });
+      }
+    }
+    
+    res.json({ success: true, results });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
