@@ -6,6 +6,9 @@ import { getPeerPrivateKey, setPeerPrivateKey } from './agent-registry';
 // Backend configuration
 export const BACKEND_URL = process.env.BACKEND_URL || 'http://localhost:3001';
 
+// P2P node configuration
+export const P2P_NODE_URL = process.env.P2P_NODE_URL || 'http://127.0.0.1:9002';
+
 // Sepolia configuration
 export const config = {
     chain: sepolia,

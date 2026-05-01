@@ -7,10 +7,15 @@ import { GetMarketOrdersTool } from "./orders/get_market_orders_tool";
 import { SubmitOrderTool } from "./orders/submit_order_tool";
 import { CancelOrderTool } from "./orders/cancel_order_tool"; 
 import { GetAccountTool } from "./account/get_account_tool";
+import { ListAgentsTool } from "./account/list_agents_tool";
+import { SendMessageTool } from "./p2p/send_message_tool";
 
 export const AGENT_BOOK_TOOLS: any = [
     // Account
     GetAccountTool,
+    ListAgentsTool,
+    // P2P
+    SendMessageTool,
     // Token tools
     GetTokenBalancesTool,
     MintTokensTool,
