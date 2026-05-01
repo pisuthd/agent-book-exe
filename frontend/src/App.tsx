@@ -25,8 +25,6 @@ import {
   Winmine1,
   Bookmark
 } from '@react95/icons';
-import type { Agent } from './types';
-import { agents as allAgents } from './mockData';
 import { useAppSettings } from './context/AppSettingsContext';
 import { HomePageWindow } from './components/HomePageWindow';
 import { AgentsWindow } from './components/AgentsWindow';
@@ -37,17 +35,15 @@ import { ChatWindow } from './components/ChatWindow';
 import { WalletWindow } from './components/WalletWindow';
 import { SettingsWindow } from './components/SettingsWindow';
 import { MinesweeperWindow } from './components/minesweeper/MinesweeperWindow';
-import { PeerListWindow } from './components/PeerListWindow';
 import './App.css';
 
-type WindowId = 'home' | 'agents' | 'trade' | 'news' | 'chat' | 'wallet' | 'about' | 'settings' | 'minesweeper' | 'peers';
+type WindowId = 'home' | 'agents' | 'trade' | 'news' | 'chat' | 'wallet' | 'about' | 'settings' | 'minesweeper';
 
 const DESKTOP_ICONS: { id: WindowId; label: string; icon: React.ReactNode }[] = [
   // { id: 'home', label: 'Home Page', icon: '🌐' }, 
   { id: 'trade', label: 'BTC/USDT', icon: '📊' }, 
   { id: 'news', label: 'News', icon: '📰' },
   { id: 'agents', label: 'Agents', icon: '🦞' },
-  { id: 'peers', label: 'Peer List', icon: '🔗' },
   // { id: 'chat', label: 'Chat', icon: '💬' },
   { id: 'wallet', label: 'Wallet', icon: '👛' },   
   { id: 'minesweeper', label: 'Minesweeper', icon: <Winmine1 variant="32x32_4" /> },
@@ -83,8 +79,8 @@ function App() {
     });
   }, []);
 
-  const handleSelectAgent = useCallback((agent: Agent) => {
-    setOpenAgentDetails((prev) => new Set(prev).add(agent.id));
+  const handleSelectAgent = useCallback((agent: { id: string; walletAddress: string }) => {
+    setOpenAgentDetails((prev) => new Set(prev).add(agent.walletAddress));
   }, []);
 
   const handleCloseAgentDetail = useCallback((agentId: string) => {
@@ -161,14 +157,12 @@ function App() {
       )}
 
       {/* Agent Detail Windows — multiple at once */}
-      {Array.from(openAgentDetails).map((agentId, index) => {
-        const agent = allAgents.find((a) => a.id === agentId);
-        if (!agent) return null;
+      {Array.from(openAgentDetails).map((walletAddress, index) => {
         return (
           <AgentDetailWindow
-            key={agentId}
-            agent={agent}
-            onClose={() => handleCloseAgentDetail(agentId)}
+            key={walletAddress}
+            agent={{ id: walletAddress, walletAddress }}
+            onClose={() => handleCloseAgentDetail(walletAddress)}
             offsetIndex={index}
           />
         );
@@ -204,11 +198,6 @@ function App() {
         <MinesweeperWindow onClose={() => closeWindow('minesweeper')} />
       )}
 
-      {/* Peer List Window */}
-      {openWindows.has('peers') && (
-        <PeerListWindow onClose={() => closeWindow('peers')} />
-      )}
-
       {/* About Window */}
       {openWindows.has('about') && (
         <Modal
@@ -217,7 +206,6 @@ function App() {
           title="About"
           titleBarOptions={<TitleBar.Close onClick={() => closeWindow('about')} />}
           buttons={[
-            // { value: 'Home Page', onClick: () => openWindow('home') },
             { value: 'Close', onClick: () => closeWindow('about') },
           ]}
           style={{

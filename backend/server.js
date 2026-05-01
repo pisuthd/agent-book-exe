@@ -5,9 +5,9 @@ import { randomUUID } from 'crypto';
 import { 
   seedData, getAllPairs, getPair, updatePairPrice, 
   getNewsForPair, addNews, deleteNews, 
-  getAllPeersFromDb, addPeer, deletePeer,
   getAllOrders, getOrderById, getOrdersByAddress, addOrder, deleteOrder, reduceOrderSize,
-  addTrade, getRecentTrades, getTradesByUser, getTradeStats
+  addTrade, getRecentTrades, getTradesByUser, getTradeStats,
+  getAllAgents, getAgentByAddress, getAgentByPeerId, addAgent, deleteAgent, isDefaultAgent, getAgentOrders, getAgentTrades, getAgentStats
 } from './db.js';
 
 const app = express();
@@ -18,86 +18,6 @@ app.use(express.json());
 
 // Seed data on startup
 seedData();
-
-// Hardcoded default peers
-const DEFAULT_PEERS = [
-  '8966388da8c682ca5af1399620572f4a225a922795630c5723a1c4b875d2a54b',
-  '34ddb6c97d8ba0c849d332b220ba23018f67836fee160aa0cfeeb3c664722e92',
-];
-
-// ============ PEERS ============
-
-// GET all peers (hardcoded + user-added)
-app.get('/api/peers', (req, res) => {
-  try {
-    const dbPeers = getAllPeersFromDb();
-    
-    // Combine hardcoded + user-added, mark source
-    const peers = [
-      ...DEFAULT_PEERS.map((pk, idx) => ({
-        id: `default-${idx}`,
-        public_key: pk,
-        source: 'default',
-      })),
-      ...dbPeers.map(p => ({
-        id: p.id.toString(),
-        public_key: p.public_key,
-        source: 'user',
-      })),
-    ];
-    
-    res.json(peers);
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
-
-// POST add peer
-app.post('/api/peers', (req, res) => {
-  try {
-    const { public_key } = req.body;
-    
-    if (!public_key || public_key.length !== 64 || !/^[a-fA-F0-9]+$/.test(public_key)) {
-      return res.status(400).json({ error: 'Invalid public key: must be 64 hex characters' });
-    }
-    
-    // Check if already in defaults
-    if (DEFAULT_PEERS.includes(public_key.toLowerCase())) {
-      return res.status(400).json({ error: 'Peer already in default list' });
-    }
-    
-    const peer = addPeer(public_key.toLowerCase());
-    if (!peer) {
-      return res.status(400).json({ error: 'Peer already exists' });
-    }
-    
-    res.status(201).json({
-      id: peer.id.toString(),
-      public_key: peer.public_key,
-      source: 'user',
-    });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
-
-// DELETE peer
-app.delete('/api/peers/:id', (req, res) => {
-  try {
-    // Can't delete default peers
-    if (req.params.id.startsWith('default-')) {
-      return res.status(400).json({ error: 'Cannot delete default peers' });
-    }
-    
-    const result = deletePeer(parseInt(req.params.id));
-    if (result.changes === 0) {
-      return res.status(404).json({ error: 'Peer not found' });
-    }
-    res.json({ success: true });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
 
 // ============ PAIRS ============
 
@@ -529,6 +449,124 @@ app.post('/api/trades/record', (req, res) => {
     }
     
     res.status(201).json(trade);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ============ AGENTS ============
+
+// GET all agents
+app.get('/api/agents', (req, res) => {
+  try {
+    const agents = getAllAgents();
+    // Enrich with stats
+    const enrichedAgents = agents.map(agent => {
+      const stats = getAgentStats(agent.wallet_address);
+      return { ...agent, stats };
+    });
+    res.json(enrichedAgents);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// GET single agent by address with details
+app.get('/api/agents/:address', (req, res) => {
+  try {
+    const address = req.params.address;
+    if (!address || !/^0x[a-fA-F0-9]{40}$/.test(address)) {
+      return res.status(400).json({ error: 'Invalid address format' });
+    }
+    
+    const agent = getAgentByAddress(address.toLowerCase());
+    if (!agent) {
+      return res.status(404).json({ error: 'Agent not found' });
+    }
+    
+    // Get related data
+    const orders = getAgentOrders(address.toLowerCase());
+    const trades = getAgentTrades(address.toLowerCase());
+    const stats = getAgentStats(address.toLowerCase());
+    
+    res.json({
+      ...agent,
+      orders,
+      trades: trades.slice(0, 10), // Last 10 trades
+      stats,
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// POST add new agent
+app.post('/api/agents', (req, res) => {
+  try {
+    const { wallet_address, peer_id, name } = req.body;
+    
+    if (!wallet_address || !peer_id) {
+      return res.status(400).json({ error: 'wallet_address and peer_id are required' });
+    }
+    
+    // Validate wallet address
+    if (!/^0x[a-fA-F0-9]{40}$/.test(wallet_address)) {
+      return res.status(400).json({ error: 'Invalid wallet address format' });
+    }
+    
+    // Validate peer_id (64 hex chars)
+    if (!/^[a-fA-F0-9]{64}$/.test(peer_id)) {
+      return res.status(400).json({ error: 'Invalid peer_id format: must be 64 hex characters' });
+    }
+    
+    // Check existing agents for debugging
+    const existingByWallet = getAgentByAddress(wallet_address.toLowerCase());
+    const existingByPeer = getAgentByPeerId(peer_id);
+    
+    console.log('Add agent request:', { wallet_address, peer_id });
+    console.log('Existing by wallet:', existingByWallet);
+    console.log('Existing by peer:', existingByPeer);
+    
+    const agent = addAgent(wallet_address, peer_id, name || null);
+    
+    if (!agent) {
+      return res.status(409).json({ 
+        error: 'Agent already exists',
+        debug: {
+          wallet_exists: !!existingByWallet,
+          peer_exists: !!existingByPeer
+        }
+      });
+    }
+    
+    res.status(201).json(agent);
+  } catch (err) {
+    console.error('Add agent error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// DELETE remove agent
+app.delete('/api/agents/:address', (req, res) => {
+  try {
+    const address = req.params.address;
+    
+    if (!address || !/^0x[a-fA-F0-9]{40}$/.test(address)) {
+      return res.status(400).json({ error: 'Invalid address format' });
+    }
+    
+    // Check if it's the default agent
+    if (isDefaultAgent(address)) {
+      return res.status(403).json({ error: 'Cannot remove the default agent' });
+    }
+    
+    const result = deleteAgent(address);
+    
+    if (result.changes === 0) {
+      return res.status(404).json({ error: 'Agent not found' });
+    }
+    
+    res.json({ success: true });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

@@ -9,6 +9,13 @@ const db = new Database(join(__dirname, 'database.sqlite'));
 
 // Create tables
 db.exec(`
+  CREATE TABLE IF NOT EXISTS agents (
+    wallet_address TEXT PRIMARY KEY,
+    peer_id TEXT NOT NULL,
+    name TEXT,
+    created_at TEXT DEFAULT CURRENT_TIMESTAMP
+  );
+
   CREATE TABLE IF NOT EXISTS pairs (
     id TEXT PRIMARY KEY,
     base TEXT NOT NULL,
@@ -26,12 +33,6 @@ db.exec(`
     magnitude REAL NOT NULL DEFAULT 0,
     created_at TEXT DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (pair_id) REFERENCES pairs(id) ON DELETE CASCADE
-  );
-
-  CREATE TABLE IF NOT EXISTS peers (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    public_key TEXT UNIQUE NOT NULL,
-    created_at TEXT DEFAULT CURRENT_TIMESTAMP
   );
 
   CREATE TABLE IF NOT EXISTS orders (
@@ -110,6 +111,16 @@ export function seedData() {
   for (const news of newsData) {
     insertNews.run(news.pair_id, news.headline, news.summary, news.direction, news.magnitude);
   }
+
+  // Seed sample agents
+  const agentData = [
+    { wallet: '0x1F38f32746a643191737D0E0474bFd7682BbDDfF', peer: '8966388da8c682ca5af1399620572f4a225a922795630c5723a1c4b875d2a54b' },
+  ];
+
+  const insertAgent = db.prepare('INSERT OR IGNORE INTO agents (wallet_address, peer_id) VALUES (?, ?)');
+  for (const a of agentData) {
+    insertAgent.run(a.wallet.toLowerCase(), a.peer);
+  }
  
 }
 
@@ -144,28 +155,6 @@ export function addNews(pairId, headline, summary, direction, magnitude) {
 
 export function deleteNews(id) {
   return db.prepare('DELETE FROM news WHERE id = ?').run(id);
-}
-
-// Helper functions - Peers
-export function getAllPeersFromDb() {
-  return db.prepare('SELECT * FROM peers ORDER BY created_at DESC').all();
-}
-
-export function addPeer(publicKey) {
-  try {
-    const stmt = db.prepare('INSERT INTO peers (public_key) VALUES (?)');
-    const result = stmt.run(publicKey);
-    return db.prepare('SELECT * FROM peers WHERE id = ?').get(result.lastInsertRowid);
-  } catch (err) {
-    if (err.message.includes('UNIQUE constraint')) {
-      return null; // Already exists
-    }
-    throw err;
-  }
-}
-
-export function deletePeer(id) {
-  return db.prepare('DELETE FROM peers WHERE id = ?').run(id);
 }
 
 // Helper functions - Orders
@@ -261,6 +250,82 @@ export function getTradeStats() {
     low: stats.low_price,
     tradeCount: stats.trade_count,
     lastPrice: lastTrade?.price || 0,
+  };
+}
+
+// Helper functions - Agents
+export function getAllAgents() {
+  return db.prepare('SELECT * FROM agents ORDER BY created_at DESC').all();
+}
+
+export function getAgentByAddress(address) {
+  return db.prepare('SELECT * FROM agents WHERE wallet_address = ?').get(address.toLowerCase());
+}
+
+export function getAgentByPeerId(peerId) {
+  return db.prepare('SELECT * FROM agents WHERE peer_id = ?').get(peerId.toLowerCase());
+}
+
+export function addAgent(walletAddress, peerId, name = null) {
+  // Check if wallet already exists
+  if (getAgentByAddress(walletAddress)) {
+    return null;
+  }
+  // Check if peer_id already exists
+  if (getAgentByPeerId(peerId)) {
+    return null;
+  }
+  // Insert new agent
+  const stmt = db.prepare('INSERT INTO agents (wallet_address, peer_id, name) VALUES (?, ?, ?)');
+  stmt.run(walletAddress.toLowerCase(), peerId, name);
+  return getAgentByAddress(walletAddress);
+}
+
+export function updateAgent(walletAddress, updates) {
+  const { peer_id, name } = updates;
+  const stmt = db.prepare('UPDATE agents SET peer_id = COALESCE(?, peer_id), name = COALESCE(?, name) WHERE wallet_address = ?');
+  stmt.run(peer_id, name, walletAddress.toLowerCase());
+  return getAgentByAddress(walletAddress);
+}
+
+export function deleteAgent(walletAddress) {
+  return db.prepare('DELETE FROM agents WHERE wallet_address = ?').run(walletAddress.toLowerCase());
+}
+
+export function isDefaultAgent(walletAddress) {
+  const DEFAULT_AGENT = '0x1f38f32746a643191737d0e0474bfd7682bbddff';
+  return walletAddress.toLowerCase() === DEFAULT_AGENT;
+}
+
+export function getAgentOrders(address) {
+  return db.prepare('SELECT * FROM orders WHERE address = ? ORDER BY created_at DESC').all(address);
+}
+
+export function getAgentTrades(address) {
+  return db.prepare('SELECT * FROM trades WHERE user_address = ? ORDER BY created_at DESC').all(address);
+}
+
+export function getAgentStats(address) {
+  // Get agent's trade stats
+  const trades = db.prepare(`
+    SELECT 
+      COALESCE(SUM(base_amount), 0) as total_volume,
+      COALESCE(MAX(price), 0) as high_price,
+      COALESCE(MIN(price), 0) as low_price,
+      COUNT(*) as trade_count
+    FROM trades 
+    WHERE user_address = ?
+  `).get(address.toLowerCase());
+  
+  // Get active order count
+  const orderCount = db.prepare('SELECT COUNT(*) as count FROM orders WHERE address = ?').get(address.toLowerCase());
+  
+  return {
+    volume: trades.total_volume,
+    high: trades.high_price,
+    low: trades.low_price,
+    tradeCount: trades.trade_count,
+    openOrders: orderCount.count,
   };
 }
 
