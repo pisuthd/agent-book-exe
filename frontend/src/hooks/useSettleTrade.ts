@@ -203,8 +203,7 @@ export function useSettleTrade() {
       // Wait for confirmation
       await publicClient.waitForTransactionReceipt({ hash: txHash });
 
-      // Reduce order sizes in backend after successful settlement
-      // The settleData now includes order_id for each fill
+      // Step 5: Reduce order sizes and record trade in backend after successful settlement
       try {
         const reduceFills = fills.map((f: any) => ({
           order_id: f.order_id,
@@ -213,15 +212,34 @@ export function useSettleTrade() {
 
         console.log('[SettleTrade] Reducing orders:', reduceFills);
 
+        // Reduce orders
         await fetch(`${MARKET_API_URL}/api/orders/reduce`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ fills: reduceFills }),
         });
 
-        console.log('[SettleTrade] Order reduction completed');
+        // Record trade
+        const totalBase = fills.reduce((sum: number, f: any) => sum + f.baseAmount, 0);
+        const totalQuote = fills.reduce((sum: number, f: any) => sum + f.quoteAmount, 0);
+        const avgPrice = totalBase > 0 ? totalQuote / totalBase : params.price;
+
+        await fetch(`${MARKET_API_URL}/api/trades/record`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            tx_hash: txHash,
+            user_address: address,
+            side: isBuy ? 'buy' : 'sell',
+            base_amount: totalBase,
+            quote_amount: totalQuote,
+            price: avgPrice,
+          }),
+        });
+
+        console.log('[SettleTrade] Order reduction and trade recording completed');
       } catch (reduceErr) {
-        console.warn('[SettleTrade] Failed to reduce order sizes:', reduceErr);
+        console.warn('[SettleTrade] Failed to record trade:', reduceErr);
         // Don't fail the trade if reduce fails - trade already succeeded
       }
 

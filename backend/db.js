@@ -44,6 +44,17 @@ db.exec(`
     signature TEXT NOT NULL,
     created_at TEXT DEFAULT CURRENT_TIMESTAMP
   );
+
+  CREATE TABLE IF NOT EXISTS trades (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    tx_hash TEXT UNIQUE,
+    user_address TEXT NOT NULL,
+    side TEXT NOT NULL CHECK(side IN ('buy', 'sell')),
+    base_amount REAL NOT NULL,
+    quote_amount REAL NOT NULL,
+    price REAL NOT NULL,
+    created_at TEXT DEFAULT CURRENT_TIMESTAMP
+  );
 `);
 
 // Seed data function
@@ -200,6 +211,57 @@ export function reduceOrderSize(id, amount) {
     db.prepare('UPDATE orders SET size = ? WHERE id = ?').run(newSize, id);
     return { id, deleted: false, remainingSize: newSize };
   }
+}
+
+// Helper functions - Trades
+export function addTrade(txHash, userAddress, side, baseAmount, quoteAmount, price) {
+  try {
+    const stmt = db.prepare(`
+      INSERT INTO trades (tx_hash, user_address, side, base_amount, quote_amount, price) 
+      VALUES (?, ?, ?, ?, ?, ?)
+    `);
+    const result = stmt.run(txHash, userAddress, side, baseAmount, quoteAmount, price);
+    return db.prepare('SELECT * FROM trades WHERE id = ?').get(result.lastInsertRowid);
+  } catch (err) {
+    if (err.message.includes('UNIQUE constraint')) {
+      return null; // Trade already recorded
+    }
+    throw err;
+  }
+}
+
+export function getRecentTrades(limit = 50) {
+  return db.prepare('SELECT * FROM trades ORDER BY created_at DESC LIMIT ?').all(limit);
+}
+
+export function getTradesByUser(userAddress, limit = 20) {
+  return db.prepare('SELECT * FROM trades WHERE user_address = ? ORDER BY created_at DESC LIMIT ?').all(userAddress, limit);
+}
+
+export function getTradeStats() {
+  // Get 24h stats: volume, high, low
+  const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+  
+  const stats = db.prepare(`
+    SELECT 
+      COALESCE(SUM(base_amount), 0) as total_volume,
+      COALESCE(MAX(price), 0) as high_price,
+      COALESCE(MIN(price), 0) as low_price,
+      COUNT(*) as trade_count
+    FROM trades 
+    WHERE created_at >= ?
+  `).get(twentyFourHoursAgo);
+  
+  // Get the last trade price (current price reference)
+  const lastTrade = db.prepare('SELECT price FROM trades ORDER BY created_at DESC LIMIT 1').get();
+  
+  return {
+    volume: stats.total_volume,
+    high: stats.high_price,
+    low: stats.low_price,
+    tradeCount: stats.trade_count,
+    lastPrice: lastTrade?.price || 0,
+  };
 }
 
 export default db;

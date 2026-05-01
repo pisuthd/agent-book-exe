@@ -1,12 +1,12 @@
 import { useState } from 'react';
 import { Frame, Modal, Button, Input, Fieldset, TitleBar } from '@react95/core';
-import { useEnsName, useEnsAddress } from 'wagmi';
-import { recentTrades } from '../mockData';
+import { useEnsName } from 'wagmi';
 import { useAppSettings } from '../context/AppSettingsContext';
 import { useMarketData } from '../hooks/useMarketData';
 import { useTokenBalances } from '../hooks/useTokens';
 import { useOrders } from '../hooks/useOrders';
 import { useSettleTrade } from '../hooks/useSettleTrade';
+import { useTrades, formatTradeTime, useTradeStats } from '../hooks/useTrades';
 import type { NewsDirection } from '../types';
 
 const directionColor = (dir: NewsDirection) => {
@@ -43,14 +43,17 @@ function EnsName({ address }: { address: string }) {
   return <span>{display}</span>;
 }
 
-// Format multiple addresses with ENS
+// Format multiple addresses with ENS (filter duplicates)
 function AgentAddresses({ addresses }: { addresses: string[] }) {
+  // Filter out duplicate addresses
+  const uniqueAddresses = [...new Set(addresses)];
+  
   return (
     <>
-      {addresses.map((addr, idx) => (
-        <span key={idx}>
+      {uniqueAddresses.map((addr, idx) => (
+        <span key={addr}>
           <EnsName address={addr} />
-          {idx < addresses.length - 1 && ', '}
+          {idx < uniqueAddresses.length - 1 && ', '}
         </span>
       ))}
     </>
@@ -63,8 +66,10 @@ export function TradeWindow({ onClose }: TradeWindowProps) {
   const { balances, isConnected, refetchAll } = useTokenBalances();
   const { aggregated, loading, error, refetch } = useOrders();
   const { settleTrade, loading: settling } = useSettleTrade();
+  const { trades, loading: tradesLoading, refetch: refetchTrades } = useTrades();
+  const { stats, refetch: refetchStats } = useTradeStats();
   const [side, setSide] = useState<'BUY' | 'SELL'>('BUY');
-  const [amount, setAmount] = useState('0.50');
+  const [amount, setAmount] = useState('0.01');
   const [limitPrice, setLimitPrice] = useState(pair?.price?.toString() || '95000');
   const [bottomTab, setBottomTab] = useState<'trades' | 'news'>('trades');
   const [settleStatus, setSettleStatus] = useState<string | null>(null);
@@ -80,10 +85,7 @@ export function TradeWindow({ onClose }: TradeWindowProps) {
   const totalAskSize = groupedAsks.reduce((sum, a) => sum + a.totalSize, 0);
   const totalBidSize = groupedBids.reduce((sum, b) => sum + b.totalSize, 0);
   const totalLiquidity = totalAskSize + totalBidSize;
-
-  const btcBalance = balances.find(b => b.symbol === 'BTC')?.amount || 0;
-  const usdtBalance = balances.find(b => b.symbol === 'USDT')?.amount || 0;
-
+ 
   const handlePriceClick = (price: number) => {
     setLimitPrice(price.toString());
   };
@@ -102,6 +104,8 @@ export function TradeWindow({ onClose }: TradeWindowProps) {
       setSettleStatus(`✅ Trade executed! Tx: ${result.txHash?.slice(0, 10)}...`);
       refetch();
       refetchAll();
+      refetchTrades();
+      refetchStats();
     } else {
       setSettleStatus(`❌ ${result.error}`);
     }
@@ -137,9 +141,9 @@ export function TradeWindow({ onClose }: TradeWindowProps) {
           <span style={{ fontSize: fs(14), fontWeight: 'bold' }}>BTC/USDT</span>
           <span style={{ fontSize: fs(20), fontWeight: 'bold' }}>${currentPrice.toLocaleString()}</span>
           <Frame style={{ width: 1, height: 16, background: 'rgba(255,255,255,0.3)' }} />
-          <span style={{ fontSize: fs(11) }}>24h Vol: <strong>1,234.56 BTC</strong></span>
-          <span style={{ fontSize: fs(11) }}>High: <strong>$65,000</strong></span>
-          <span style={{ fontSize: fs(11) }}>Low: <strong>$63,500</strong></span>
+          <span style={{ fontSize: fs(11) }}>24h Vol: <strong>{stats.volume > 0 ? `${stats.volume.toFixed(2)} BTC` : 'N/A'}</strong></span>
+          <span style={{ fontSize: fs(11) }}>High: <strong>{stats.high > 0 ? `$${stats.high.toLocaleString()}` : 'N/A'}</strong></span>
+          <span style={{ fontSize: fs(11) }}>Low: <strong>{stats.low > 0 ? `$${stats.low.toLocaleString()}` : 'N/A'}</strong></span>
           <span style={{ fontSize: fs(11) }}>Spread: <strong>{aggregated.spread ? `$${aggregated.spread.toLocaleString()}` : 'N/A'}</strong></span>
         </Frame>
 
@@ -157,9 +161,102 @@ export function TradeWindow({ onClose }: TradeWindowProps) {
 
         {/* Main Trading Area */}
         <Frame style={{ flex: 1, display: 'flex', overflow: 'hidden' }}>
-          {/* Order Book - Left Panel */}
-          <Frame style={{ flex: 1.2, flexDirection: 'column', borderRight: '2px solid', borderColor: '#808080' }}>
-            {/* Asks (Sells) - Top */}
+          
+          {/* LEFT COLUMN  */}
+          <Frame style={{ width: 200, flexDirection: 'column', borderRight: '2px solid', borderColor: '#808080', padding: 8 }}>
+            <Frame style={{
+              padding: '6px 8px',
+              background: '#000080',
+              color: 'white',
+              fontWeight: 'bold',
+              fontSize: fs(12),
+              marginBottom: 8,
+              borderTop: '2px solid white',
+              borderLeft: '2px solid white',
+              borderRight: '2px solid #404040',
+              borderBottom: '2px solid #404040',
+            }}>
+              ℹ️ How to Use
+            </Frame>
+             
+            {!isConnected && (
+              <Frame style={{ 
+                padding: '6px 8px', 
+                background: '#ffffcc', 
+                border: '1px solid #cccc00',
+                marginBottom: 8,
+              }}>
+                <Frame style={{ fontSize: fs(11), fontWeight: 'bold', color: '#cc8800', marginBottom: 4 }}>
+                  ⚠️ Before Trading:
+                </Frame>
+                <Frame style={{ fontSize: fs(11), lineHeight: 1.3 }}>
+                  1. Click Wallet icon to connect<br/>
+                  2. Get testnet tokens<br/>
+                  3. Approve on first trade
+                </Frame>
+              </Frame>
+            )}
+            
+            {/* Trading Steps */}
+            <Frame style={{ flexDirection: 'column', gap: 6 }}>
+              <Frame style={{ fontSize: fs(11), lineHeight: 1.3 }}>
+                <strong style={{ color: '#000080' }}>1. View Order Book</strong><br/>
+                See offers from AI agents
+              </Frame>
+              <Frame style={{ fontSize: fs(11), lineHeight: 1.3 }}>
+                <strong style={{ color: '#000080' }}>2. Set Price/Size</strong><br/>
+                Click orders to auto-fill
+              </Frame>
+              <Frame style={{ fontSize: fs(11), lineHeight: 1.3 }}>
+                <strong style={{ color: '#000080' }}>3. Execute</strong><br/>
+                Confirm in wallet popup
+              </Frame>
+              <Frame style={{ fontSize: fs(11), lineHeight: 1.3 }}>
+                <strong style={{ color: '#000080' }}>4. Try News Tab</strong><br/>
+                Add news & watch agents react
+              </Frame>
+            </Frame>
+            
+            <Frame style={{ flex: 1 }} />
+            
+            {/* Quick Balance Display */}
+            <Frame style={{
+              padding: '8px',
+              background: '#e0e0e0', 
+              marginTop: "20px"
+            }}>
+              <Frame style={{ fontSize: fs(11), fontWeight: 'bold', marginBottom: 4, color: '#000080' }}>
+                Your Balances
+              </Frame>
+              {!isConnected ? (
+                <Frame style={{ padding: '4px', background: '#ffffcc' }}>
+                  <span style={{ fontSize: fs(11), color: '#cc8800' }}>⚠️ Connect wallet</span>
+                </Frame>
+              ) : (
+                <Frame style={{ flexDirection: 'column', gap: 6 }}>
+                  {balances.filter(b => b.symbol === 'USDT' || b.symbol === 'BTC').map((token) => (
+                    <Frame key={token.symbol} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: fs(12) }}>
+                      <Frame style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                        <img src={token.icon} alt={token.symbol} style={{ width: 18, height: 18 }} />
+                        <span style={{ fontSize: fs(11) }}>{token.symbol}:</span>
+                      </Frame>
+                      <span style={{ fontWeight: 'bold', fontSize: fs(13) }}>
+                        {token.amount >= 1000 
+                          ? token.amount.toLocaleString(undefined, { minimumFractionDigits: 2 })
+                          : token.amount.toFixed(4)
+                        }
+                      </span>
+                    </Frame>
+                  ))}
+                </Frame>
+              )}
+            </Frame>
+          </Frame>
+
+          {/* MIDDLE COLUMN */}
+          <Frame style={{ flex: 1.5, flexDirection: 'column', borderRight: '2px solid', borderColor: '#808080' }}>
+
+            {/* Asks (Sells) */}
             <Frame style={{ flex: 1, flexDirection: 'column', padding: 4 }}>
               <Frame style={{
                 display: 'flex',
@@ -240,7 +337,7 @@ export function TradeWindow({ onClose }: TradeWindowProps) {
               </span>
             </Frame>
 
-            {/* Bids (Buys) - Bottom */}
+            {/* Bids (Buys) */}
             <Frame style={{ flex: 1, flexDirection: 'column', padding: 4 }}>
               <Frame style={{
                 display: 'flex',
@@ -306,7 +403,7 @@ export function TradeWindow({ onClose }: TradeWindowProps) {
             </Frame>
           </Frame>
 
-          {/* Trade Panel - Right Panel */}
+          {/* Right Panel */}
           <Frame style={{ width: 340, flexDirection: 'column', padding: 8 }}>
             {/* Limit Only Badge */}
             <Frame style={{
@@ -329,8 +426,8 @@ export function TradeWindow({ onClose }: TradeWindowProps) {
                 onClick={() => setSide('BUY')}
                 style={{
                   flex: 1,
-                  background: side === 'BUY' ? '#008000' : '#c0c0c0',
-                  color: side === 'BUY' ? 'white' : 'black',
+                  background: side === 'BUY' ? '#000080' : '#808080',
+                  color: 'white',
                   fontWeight: 'bold',
                   padding: '10px 0',
                   borderTop: '2px solid white',
@@ -345,8 +442,8 @@ export function TradeWindow({ onClose }: TradeWindowProps) {
                 onClick={() => setSide('SELL')}
                 style={{
                   flex: 1,
-                  background: side === 'SELL' ? '#cc0000' : '#c0c0c0',
-                  color: side === 'SELL' ? 'white' : 'black',
+                  background: side === 'SELL' ? '#000080' : '#808080',
+                  color: 'white',
                   fontWeight: 'bold',
                   padding: '10px 0',
                   borderTop: '2px solid white',
@@ -398,7 +495,7 @@ export function TradeWindow({ onClose }: TradeWindowProps) {
             </Frame>
 
             {/* Order Summary */}
-            <Fieldset legend="Order Summary" style={{ marginBottom: 8, fontSize: fs(11) }}>
+            <Fieldset legend="Order Summary" style={{ marginBottom: 8, fontSize: fs(13) }}>
               <Frame style={{ flexDirection: 'column', gap: 4 }}>
                 <Frame style={{ display: 'flex', justifyContent: 'space-between' }}>
                   <span>Est. Total:</span>
@@ -407,11 +504,20 @@ export function TradeWindow({ onClose }: TradeWindowProps) {
                 <Frame style={{ display: 'flex', justifyContent: 'space-between' }}>
                   <span>Fee (0.1%):</span>
                   <span>{(estTotal * 0.001).toFixed(4)} USDT</span>
-                </Frame>
-                <Frame style={{ display: 'flex', justifyContent: 'space-between' }}>
-                  <span>Est. Slippage:</span>
-                  <span>~0.02%</span>
-                </Frame>
+                </Frame> 
+                {aggregated.spread && (
+                  <Frame style={{ display: 'flex', justifyContent: 'space-between', fontSize: fs(10), color: '#666' }}>
+                    <span>vs Best:</span>
+                    <span style={{ color: priceNum > 0 ? (side === 'BUY' ? '#008000' : '#cc0000') : '#666' }}>
+                      {side === 'BUY' && groupedAsks.length > 0 
+                        ? `-${(((groupedAsks[groupedAsks.length - 1]?.price - priceNum) / groupedAsks[groupedAsks.length - 1]?.price) * 100).toFixed(2)}%`
+                        : side === 'SELL' && groupedBids.length > 0
+                        ? `+${(((priceNum - groupedBids[0]?.price) / groupedBids[0]?.price) * 100).toFixed(2)}%`
+                        : 'N/A'
+                      }
+                    </span>
+                  </Frame>
+                )}
               </Frame>
             </Fieldset>
 
@@ -420,7 +526,7 @@ export function TradeWindow({ onClose }: TradeWindowProps) {
               onClick={handleSettle}
               style={{
                 width: '100%',
-                background: side === 'BUY' ? '#008000' : '#cc0000',
+                background: '#000080',
                 color: 'white',
                 fontWeight: 'bold',
                 fontSize: fs(16),
@@ -450,34 +556,7 @@ export function TradeWindow({ onClose }: TradeWindowProps) {
 
             <Frame style={{ height: 1, background: '#808080', margin: '12px 0' }} />
 
-            {/* Balance Info */}
-            <Fieldset legend="Your Balance" style={{ marginBottom: 8, fontSize: fs(11) }}>
-              {!isConnected ? (
-                <Frame style={{
-                  padding: '8px 4px',
-                  background: '#ffffcc',
-                  border: '1px solid #cccc00',
-                }}>
-                  <span style={{ fontSize: fs(10), color: '#cc8800' }}>
-                    ⚠️ Connect wallet to see real balances
-                  </span>
-                </Frame>
-              ) : (
-                <Frame style={{ flexDirection: 'column', gap: 4 }}>
-                  <Frame style={{ display: 'flex', justifyContent: 'space-between' }}>
-                    <span>USDT:</span>
-                    <span style={{ fontWeight: 'bold' }}>{usdtBalance.toFixed(2)}</span>
-                  </Frame>
-                  <Frame style={{ display: 'flex', justifyContent: 'space-between' }}>
-                    <span>BTC:</span>
-                    <span style={{ fontWeight: 'bold' }}>{btcBalance.toFixed(4)}</span>
-                  </Frame>
-                </Frame>
-              )}
-            </Fieldset>
- 
-
-            {/* Bottom Section with Tabs */}
+            {/* Bottom Section  */}
             <Frame style={{ flex: 1, flexDirection: 'column' }}>
               {/* Tabs */}
               <Frame style={{
@@ -527,40 +606,48 @@ export function TradeWindow({ onClose }: TradeWindowProps) {
               <Frame style={{ flex: 1, overflow: 'auto', background: 'white', border: '2px inset' }}>
                 {bottomTab === 'trades' ? (
                   /* Recent Trades */
-                  <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: fs(10) }}>
-                    <thead>
-                      <tr style={{ background: '#c0c0c0' }}>
-                        <th style={{ textAlign: 'right', padding: '2px 4px' }}>Price</th>
-                        <th style={{ textAlign: 'right', padding: '2px 4px' }}>Size</th>
-                        <th style={{ textAlign: 'center', padding: '2px 4px' }}>Side</th>
-                        <th style={{ textAlign: 'right', padding: '2px 4px' }}>Time</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {recentTrades.map((trade, i) => (
-                        <tr key={i} style={{ borderBottom: '1px solid #eee' }}>
-                          <td style={{
-                            textAlign: 'right',
-                            padding: '2px 4px',
-                            color: trade.side === 'BUY' ? '#008000' : '#cc0000',
-                            fontWeight: 'bold'
-                          }}>
-                            {trade.price.toLocaleString()}
-                          </td>
-                          <td style={{ textAlign: 'right', padding: '2px 4px' }}>{trade.amount.toFixed(4)}</td>
-                          <td style={{
-                            textAlign: 'center',
-                            padding: '2px 4px',
-                            color: trade.side === 'BUY' ? '#008000' : '#cc0000',
-                            fontSize: fs(9)
-                          }}>
-                            {trade.side}
-                          </td>
-                          <td style={{ textAlign: 'right', padding: '2px 4px', color: '#888' }}>{trade.time}</td>
+                  trades.length === 0 ? (
+                    <Frame style={{ padding: 16, textAlign: 'center' }}>
+                      <span style={{ fontSize: fs(10), color: '#888' }}>
+                        {tradesLoading ? 'Loading trades...' : 'No trades yet'}
+                      </span>
+                    </Frame>
+                  ) : (
+                    <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: fs(10) }}>
+                      <thead>
+                        <tr style={{ background: '#c0c0c0' }}>
+                          <th style={{ textAlign: 'right', padding: '2px 4px' }}>Price</th>
+                          <th style={{ textAlign: 'right', padding: '2px 4px' }}>Size</th>
+                          <th style={{ textAlign: 'center', padding: '2px 4px' }}>Side</th>
+                          <th style={{ textAlign: 'right', padding: '2px 4px' }}>Time</th>
                         </tr>
-                      ))}
-                    </tbody>
-                  </table>
+                      </thead>
+                      <tbody>
+                        {trades.map((trade) => (
+                          <tr key={trade.id} style={{ borderBottom: '1px solid #eee' }}>
+                            <td style={{
+                              textAlign: 'right',
+                              padding: '2px 4px',
+                              color: trade.side === 'buy' ? '#008000' : '#cc0000',
+                              fontWeight: 'bold'
+                            }}>
+                              {trade.price.toLocaleString()}
+                            </td>
+                            <td style={{ textAlign: 'right', padding: '2px 4px' }}>{trade.base_amount.toFixed(4)}</td>
+                            <td style={{
+                              textAlign: 'center',
+                              padding: '2px 4px',
+                              color: trade.side === 'buy' ? '#008000' : '#cc0000',
+                              fontSize: fs(9)
+                            }}>
+                              {trade.side.toUpperCase()}
+                            </td>
+                            <td style={{ textAlign: 'right', padding: '2px 4px', color: '#888' }}>{formatTradeTime(trade.created_at)}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  )
                 ) : (
                   /* News */
                   <Frame style={{ flexDirection: 'column', padding: 4, gap: 4 }}>

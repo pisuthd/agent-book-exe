@@ -6,7 +6,8 @@ import {
   seedData, getAllPairs, getPair, updatePairPrice, 
   getNewsForPair, addNews, deleteNews, 
   getAllPeersFromDb, addPeer, deletePeer,
-  getAllOrders, getOrderById, getOrdersByAddress, addOrder, deleteOrder, reduceOrderSize 
+  getAllOrders, getOrderById, getOrdersByAddress, addOrder, deleteOrder, reduceOrderSize,
+  addTrade, getRecentTrades, getTradesByUser, getTradeStats
 } from './db.js';
 
 const app = express();
@@ -465,6 +466,69 @@ app.post('/api/orders/reduce', (req, res) => {
     }
     
     res.json({ success: true, results });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ============ TRADES ============
+
+// GET recent trades
+app.get('/api/trades', (req, res) => {
+  try {
+    const limit = parseInt(req.query.limit) || 50;
+    const trades = getRecentTrades(limit);
+    res.json(trades);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// GET trade stats (24h volume, high, low)
+app.get('/api/trades/stats', (req, res) => {
+  try {
+    const stats = getTradeStats();
+    res.json(stats);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// GET trades by user address
+app.get('/api/trades/:address', (req, res) => {
+  try {
+    const address = req.params.address;
+    if (!address || !/^0x[a-fA-F0-9]{40}$/.test(address)) {
+      return res.status(400).json({ error: 'Invalid address format' });
+    }
+    const limit = parseInt(req.query.limit) || 20;
+    const trades = getTradesByUser(address.toLowerCase(), limit);
+    res.json(trades);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// POST record a trade (called after settlement)
+app.post('/api/trades/record', (req, res) => {
+  try {
+    const { tx_hash, user_address, side, base_amount, quote_amount, price } = req.body;
+    
+    if (!tx_hash || !user_address || !side || base_amount === undefined || !quote_amount || price === undefined) {
+      return res.status(400).json({ error: 'Missing required fields' });
+    }
+    
+    if (!['buy', 'sell'].includes(side)) {
+      return res.status(400).json({ error: 'Side must be buy or sell' });
+    }
+    
+    const trade = addTrade(tx_hash, user_address.toLowerCase(), side, base_amount, quote_amount, price);
+    
+    if (!trade) {
+      return res.status(409).json({ error: 'Trade already recorded' });
+    }
+    
+    res.status(201).json(trade);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
