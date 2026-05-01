@@ -523,10 +523,6 @@ app.post('/api/agents', (req, res) => {
     const existingByWallet = getAgentByAddress(wallet_address.toLowerCase());
     const existingByPeer = getAgentByPeerId(peer_id);
     
-    console.log('Add agent request:', { wallet_address, peer_id });
-    console.log('Existing by wallet:', existingByWallet);
-    console.log('Existing by peer:', existingByPeer);
-    
     const agent = addAgent(wallet_address, peer_id, name || null);
     
     if (!agent) {

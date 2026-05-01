@@ -96,6 +96,7 @@ export function AddAgentWindow({ onClose, onSuccess }: AddAgentWindowProps) {
         body: JSON.stringify({
           wallet_address: walletAddress,
           peer_id: peerId,
+          name: fetched && ensName ? ensName.trim() : undefined,
         }),
       });
 
