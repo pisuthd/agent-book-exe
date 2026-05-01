@@ -1,5 +1,5 @@
-import { WalletAgent } from "../../agent/wallet";
-import { type McpTool } from "../../types";
+ import { type McpTool } from "../../types";
+import { type AgentManager } from "../../agent/agent-manager";
 import { BACKEND_URL } from "../../config";
 
 interface AgentStats {
@@ -10,21 +10,13 @@ interface AgentStats {
     openOrders: number;
 }
 
-interface Agent {
-    wallet_address: string;
-    peer_id: string;
-    name: string;
-    created_at: string;
-    stats: AgentStats;
-}
-
 export const ListAgentsTool: McpTool = {
     name: "list_agents",
     description: "Get all agents registered in the system",
     schema: {
         // No input parameters needed
     },
-    handler: async (agent: WalletAgent, input: Record<string, any>) => {
+    handler: async (agentManager: AgentManager, input: Record<string, any>) => {
         try {
             const response = await fetch(`${BACKEND_URL}/api/agents`);
             if (!response.ok) {

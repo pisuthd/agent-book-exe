@@ -1,10 +1,10 @@
-import { z } from 'zod';
+import { AgentManager } from './agent/agent-manager';
 
 export interface McpTool {
     name: string;
     description: string;
     schema: Record<string, any>;
-    handler: (agent: any, input: Record<string, any>) => Promise<any>;
+    handler: (agentManager: AgentManager, input: Record<string, any>) => Promise<any>;
 }
 
 export interface TokenBalance {

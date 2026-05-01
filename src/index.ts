@@ -1,16 +1,16 @@
 import 'dotenv/config';
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
-import { WalletAgent } from "./agent/wallet";
-import { validateEnvironment } from './config';
+import { AgentManager } from "./agent/agent-manager";
 import { AGENT_BOOK_TOOLS } from "./mcp"
 
 
 /**
- * Creates an MCP server for AgentBook.exe's Agent operations
+ * Creates an MCP server for AgentBook's Agent operations
+ * Supports multiple agents via PEER_IDS + NODE_IDS env vars
  */
 
-function createAgentBookMcpServer(agent: WalletAgent) {
+function createAgentBookMcpServer(agentManager: AgentManager) {
     const server = new McpServer({
         name: "agentbook-mcp-server",
         version: "1.0.0"
@@ -34,7 +34,7 @@ function createAgentBookMcpServer(agent: WalletAgent) {
             },
             async (params: any): Promise<any> => {
                 try {
-                    const result = await tool.handler(agent, params);
+                    const result = await tool.handler(agentManager, params);
                     return {
                         content: [
                             {
@@ -69,31 +69,35 @@ async function main() {
     try {
         console.error("🔍 Starting AgentBook MCP Server...");
 
-        // Validate environment before proceeding
-        validateEnvironment();
+        // Create agent manager (loads all agents from PEER_IDS/NODE_IDS)
+        const agentManager = new AgentManager();
 
-        // Create wallet agent instance
-        const walletAgent = new WalletAgent();
+        // Log all configured agents
+        const agents = agentManager.listAgents();
+        console.error(`📋 ${agents.length} agent(s) configured:`);
+        for (const a of agents) {
+            console.error(`   - ${a.nodeName}: ${a.address} (peer: ${a.peerId.slice(0, 8)}...)`);
+        }
 
         // Create and start MCP server
-        const server = createAgentBookMcpServer(walletAgent);
+        const server = createAgentBookMcpServer(agentManager);
         const transport = new StdioServerTransport();
         await server.connect(transport);
 
     } catch (error) {
-        console.error('❌ Error starting AgentBook.exe MCP server:', error);
+        console.error('❌ Error starting AgentBook MCP server:', error);
         process.exit(1);
     }
 }
 
 // Handle shutdown gracefully
 process.on('SIGINT', async () => {
-    console.error('\n🛑 Shutting down AgentBook.exe MCP Server...');
+    console.error('\n🛑 Shutting down AgentBook MCP Server...');
     process.exit(0);
 });
 
 process.on('SIGTERM', async () => {
-    console.error('\n🛑 Shutting down AgentBook.exe MCP Server...');
+    console.error('\n🛑 Shutting down AgentBook MCP Server...');
     process.exit(0);
 });
 

@@ -1,6 +1,6 @@
-import { WalletAgent } from "../../agent/wallet";
 import { type McpTool } from "../../types";
-import { getPeerId, BACKEND_URL } from "../../config";
+import { type AgentManager } from "../../agent/agent-manager";
+import { BACKEND_URL } from "../../config";
 
 interface Order {
     id: string;
@@ -40,11 +40,11 @@ export const GetMarketOrdersTool: McpTool = {
     name: "get_market_orders",
     description: "Get all orders across the entire system (all peers). Returns the full order book with bids and asks from all agents.",
     schema: {
-        // No input parameters needed
+        // No input parameters needed - shows all peers' orders
     },
-    handler: async (agent: WalletAgent, input: Record<string, any>) => {
+    handler: async (agentManager: AgentManager, input: Record<string, any>) => {
         try {
-            const peerId = getPeerId();
+            const agent = agentManager.getDefault();
 
             // Get all orders from backend (system-wide)
             const response = await fetch(`${BACKEND_URL}/api/orders`);
@@ -78,7 +78,6 @@ export const GetMarketOrdersTool: McpTool = {
 
             return {
                 status: "success",
-                peer_id: peerId,
                 total_orders: publicOrders.length,
                 bids,
                 asks,

@@ -1,16 +1,19 @@
-import { WalletAgent } from "../../agent/wallet";
+import { z } from "zod";
 import { type McpTool } from "../../types";
-import { getPeerId, BACKEND_URL } from "../../config";
- 
+import { type AgentManager } from "../../agent/agent-manager";
+import { BACKEND_URL } from "../../config";
+
 export const GetOrdersTool: McpTool = {
     name: "get_my_orders",
-    description: "Get all orders for the current peer (bids and asks)",
+    description: "Get all orders for a specific agent (bids and asks)",
     schema: {
-        // No input parameters needed
+        agent_name: z.string().optional()
+            .describe("Agent name from NODE_IDS. Defaults to first agent if not provided.")
     },
-    handler: async (agent: WalletAgent, input: Record<string, any>) => {
+    handler: async (agentManager: AgentManager, input: Record<string, any>) => {
         try {
-            const peerId = getPeerId();
+            const agent = agentManager.resolve(input.agent_name);
+            const peerId = agent.peerId;
 
             // Get orders from backend by wallet address
             const response = await fetch(`${BACKEND_URL}/api/orders/${agent.address}`);
@@ -24,6 +27,7 @@ export const GetOrdersTool: McpTool = {
 
             return {
                 status: "success",
+                agent_name: agent.nodeName,
                 peer_id: peerId,
                 address: agent.address,
                 bids,

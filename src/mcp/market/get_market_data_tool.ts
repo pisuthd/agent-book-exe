@@ -1,5 +1,5 @@
-import { WalletAgent } from "../../agent/wallet";
 import { type McpTool } from "../../types";
+import { type AgentManager } from "../../agent/agent-manager";
 import { BACKEND_URL } from "../../config";
 
 const DEFAULT_PAIR = 'BTCUSDT';
@@ -27,7 +27,7 @@ export const GetMarketDataTool: McpTool = {
     schema: {
         // No input parameters - always uses default pair
     },
-    handler: async (agent: WalletAgent, input: Record<string, any>) => {
+    handler: async (agentManager: AgentManager, input: Record<string, any>) => {
         try {
             const response = await fetch(`${BACKEND_URL}/api/pairs/${DEFAULT_PAIR}`);
             

@@ -1,16 +1,18 @@
-import { WalletAgent } from "../../agent/wallet";
+import { z } from "zod";
 import { type McpTool } from "../../types";
-import { getPeerId } from "../../config";
+import { type AgentManager } from "../../agent/agent-manager";
 
 export const GetAccountTool: McpTool = {
     name: "get_account",
-    description: "Get the current peer's account information including peer ID, wallet address, and ENS name",
+    description: "Get account information for a specific agent (or default agent). Returns peer ID, wallet address, and ENS name.",
     schema: {
-        // No input parameters needed
+        agent_name: z.string().optional()
+            .describe("Agent name from NODE_IDS (e.g., 'agentbook-one.eth'). Defaults to first agent if not provided.")
     },
-    handler: async (agent: WalletAgent, input: Record<string, any>) => {
+    handler: async (agentManager: AgentManager, input: Record<string, any>) => {
         try {
-            const peerId = getPeerId();
+            const agent = agentManager.resolve(input.agent_name);
+            const peerId = agent.peerId;
             const address = agent.address;
 
             // Try to resolve ENS name
@@ -24,6 +26,7 @@ export const GetAccountTool: McpTool = {
 
             return {
                 status: "success",
+                agent_name: agent.nodeName,
                 peer_id: peerId,
                 address: address,
                 ens_name: ensName,

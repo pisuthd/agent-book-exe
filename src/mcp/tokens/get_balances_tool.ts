@@ -1,19 +1,22 @@
 import { z } from "zod";
-import { WalletAgent } from "../../agent/wallet";
 import { type McpTool } from "../../types";
+import { type AgentManager } from "../../agent/agent-manager";
 
 export const GetTokenBalancesTool: McpTool = {
     name: "get_token_balances",
-    description: "Get ETH and ERC20 token balances for the agent's wallet",
+    description: "Get ETH and ERC20 token balances for a specific agent's wallet",
     schema: {
-        // No input parameters needed
+        agent_name: z.string().optional()
+            .describe("Agent name from NODE_IDS. Defaults to first agent if not provided.")
     },
-    handler: async (agent: WalletAgent, input: Record<string, any>) => {
+    handler: async (agentManager: AgentManager, input: Record<string, any>) => {
         try {
+            const agent = agentManager.resolve(input.agent_name);
             const balances = await agent.getTokenBalances();
 
             return {
                 status: "success",
+                agent_name: agent.nodeName,
                 address: balances.address,
                 native_balance: balances.nativeBalanceFormatted,
                 tokens: balances.tokens.map((token: any) => ({

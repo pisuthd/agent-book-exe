@@ -1,26 +1,27 @@
 import { z } from "zod";
-import { WalletAgent } from "../../agent/wallet";
 import { type McpTool } from "../../types";
-import { getPeerId, BACKEND_URL } from "../../config";
-
-
+import { type AgentManager } from "../../agent/agent-manager";
+import { BACKEND_URL } from "../../config";
 
 export const CancelOrderTool: McpTool = {
     name: "cancel_order",
-    description: "Cancel an existing order by its ID",
+    description: "Cancel an existing order by its ID for a specific agent",
     schema: {
         order_id: z.string()
-            .describe("The ID of the order to cancel")
+            .describe("The ID of the order to cancel"),
+        agent_name: z.string().optional()
+            .describe("Agent name from NODE_IDS. Defaults to first agent if not provided.")
     },
-    handler: async (agent: WalletAgent, input: Record<string, any>) => {
+    handler: async (agentManager: AgentManager, input: Record<string, any>) => {
         try {
             const { order_id } = input;
+            const agent = agentManager.resolve(input.agent_name);
 
             if (!order_id) {
                 throw new Error('order_id is required');
             }
 
-            const peerId = getPeerId();
+            const peerId = agent.peerId;
             const timestamp = Date.now().toString();
 
             // Sign the cancel message
@@ -46,6 +47,7 @@ export const CancelOrderTool: McpTool = {
             return {
                 status: "success",
                 message: `✅ Order cancelled: ${order_id}`,
+                agent_name: agent.nodeName,
                 cancelled_order_id: order_id,
                 peer_id: peerId
             };

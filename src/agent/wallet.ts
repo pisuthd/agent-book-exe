@@ -1,5 +1,5 @@
-import { publicClient, walletClient, account, config, SETTLEMENT_ADDRESS } from '../config';
-import { Address, formatUnits, parseUnits } from 'viem';
+import { publicClient, config, SETTLEMENT_ADDRESS, createWalletClientForAccount } from '../config';
+import { Address, formatUnits, parseUnits, type Account, type PublicClient, type WalletClient } from 'viem';
 import { ERC20_ABI, MOCK_TOKEN_ABI } from '../contracts/erc20';
 
 // Token configuration for Sepolia
@@ -15,13 +15,22 @@ export const TOKEN_CONFIGS = {
 } as const;
 
 export class WalletAgent {
-    // Expose clients for direct use in MCP tools
-    public readonly walletClient = walletClient;
-    public readonly publicClient = publicClient;
-    public readonly account = account;
+    public readonly peerId: string;
+    public readonly nodeName: string;
+    public readonly walletClient: WalletClient;
+    public readonly publicClient: PublicClient;
+    public readonly account: Account;
+
+    constructor(peerId: string, nodeName: string, account: Account) {
+        this.peerId = peerId;
+        this.nodeName = nodeName;
+        this.account = account;
+        this.publicClient = publicClient;
+        this.walletClient = createWalletClientForAccount(account);
+    }
 
     get address(): Address {
-        return account.address;
+        return this.account.address;
     }
 
     async getBalance(): Promise<string> {
@@ -92,7 +101,6 @@ export class WalletAgent {
     }
 
     // Approve token to Settlement contract for trading
-    // Agents use ERC20 approval (no signature needed)
     async approveToken(tokenSymbol: string) {
         const symbol = tokenSymbol.toUpperCase();
         const tokenConfig = TOKEN_CONFIGS[symbol as keyof typeof TOKEN_CONFIGS];
@@ -101,18 +109,17 @@ export class WalletAgent {
             throw new Error(`Token ${tokenSymbol} not supported. Available: WBTC, USDT`);
         }
 
-        // Approve Settlement contract (agents use ERC20 approval, no Permit2 signature needed)
         const settlementAddress = SETTLEMENT_ADDRESS;
 
         try {
             const maxUint256 = BigInt('0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff');
 
-            const txHash = await walletClient.writeContract({
+            const txHash = await this.walletClient.writeContract({
                 address: tokenConfig.address,
                 abi: ERC20_ABI,
                 functionName: 'approve',
                 args: [settlementAddress, maxUint256],
-                account: account
+                account: this.account
             } as any);
 
             return {
@@ -127,13 +134,13 @@ export class WalletAgent {
         } catch (error: any) {
             throw new Error(`Failed to approve ${symbol} for trading: ${error.message}`);
         }
-    } 
+    }
 
     // Sign a message
     async signMessage(message: string): Promise<string> {
         try {
-            const signature = await walletClient.signMessage({
-                account: account,
+            const signature = await this.walletClient.signMessage({
+                account: this.account,
                 message: message
             });
             return signature;
@@ -155,12 +162,12 @@ export class WalletAgent {
             const decimals = tokenConfig.decimals;
             const amountWei = parseUnits(amount, decimals);
 
-            const txHash = await walletClient.writeContract({
+            const txHash = await this.walletClient.writeContract({
                 address: tokenConfig.address,
                 abi: MOCK_TOKEN_ABI,
                 functionName: 'mint',
                 args: [this.address, amountWei],
-                account: account
+                account: this.account
             } as any);
 
             return {
