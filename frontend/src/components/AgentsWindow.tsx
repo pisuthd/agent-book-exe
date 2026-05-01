@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Frame, Modal, TitleBar, Button } from '@react95/core';
+import { Frame, Modal, TitleBar } from '@react95/core';
 import { useBalance, useReadContract, useEnsName } from 'wagmi';
 import { erc20Abi } from 'viem';
 import { useAppSettings } from '../context/AppSettingsContext';

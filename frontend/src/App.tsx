@@ -54,7 +54,7 @@ const DESKTOP_ICONS: { id: WindowId; label: string; icon: React.ReactNode }[] = 
 function App() {
   const { fs } = useAppSettings();
   const audioRef = useRef(new Audio('/win95.mp3'));
-  const [openWindows, setOpenWindows] = useState<Set<WindowId>>(new Set());
+  const [openWindows, setOpenWindows] = useState<Set<WindowId>>(new Set(["about"]));
   const [openAgentDetails, setOpenAgentDetails] = useState<Set<string>>(new Set());
 
   const playStartupSound = useCallback(() => {
