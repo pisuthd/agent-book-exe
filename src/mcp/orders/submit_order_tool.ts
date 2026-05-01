@@ -31,9 +31,11 @@ export const SubmitOrderTool: McpTool = {
 
             const peerId = agent.peerId;
             const timestamp = Date.now().toString();
+            const numericPrice = parseFloat(price);
+            const numericSize = parseFloat(size);
 
-            // Sign the order
-            const message = JSON.stringify({ action: 'submit_order', side, price, size, timestamp });
+            // Sign the order (must match backend's message format exactly)
+            const message = JSON.stringify({ action: 'submit_order', side: side.toLowerCase(), price: numericPrice, size: numericSize, timestamp, peer_id: peerId });
             const signature = await agent.signMessage(message);
 
             // Submit to backend
@@ -44,8 +46,8 @@ export const SubmitOrderTool: McpTool = {
                     address: agent.address,
                     peer_id: peerId,
                     side: side.toLowerCase(),
-                    price: parseFloat(price),
-                    size: parseFloat(size),
+                    price: numericPrice,
+                    size: numericSize,
                     signature,
                     timestamp
                 })
