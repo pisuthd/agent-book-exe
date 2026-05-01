@@ -119,9 +119,9 @@ export function seedData() {
     { wallet: '0xe913C807F2c49e3A5abf933e5b05E7D26266794C', peer: '26add29c7ec4795b4429c13efd90a490598abd82566539a5c560184c2ad8bdea', name: "meet-my-agent.eth" },
   ];
 
-  const insertAgent = db.prepare('INSERT OR IGNORE INTO agents (wallet_address, peer_id) VALUES (?, ?)');
+  const insertAgent = db.prepare('INSERT OR IGNORE INTO agents (wallet_address, peer_id, name) VALUES (?, ?, ?)');
   for (const a of agentData) {
-    insertAgent.run(a.wallet.toLowerCase(), a.peer);
+    insertAgent.run(a.wallet.toLowerCase(), a.peer, a.name);
   }
 
 }
