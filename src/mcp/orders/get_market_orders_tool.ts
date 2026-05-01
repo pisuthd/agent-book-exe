@@ -16,6 +16,7 @@ interface Order {
 // Public order
 interface PublicOrder {
     id: string;
+    address: string;
     peer_id: string;
     side: 'bid' | 'ask';
     price: number;
@@ -26,6 +27,7 @@ interface PublicOrder {
 function toPublicOrder(order: Order): PublicOrder {
     return {
         id: order.id,
+        address: order.address,
         peer_id: order.peer_id,
         side: order.side,
         price: order.price,
@@ -51,7 +53,7 @@ export const GetMarketOrdersTool: McpTool = {
             }
             const orders: any = await response.json();
 
-            // Convert to public orders (remove address and signature)
+            // Convert to public orders (remove signature)
             const publicOrders = orders.map(toPublicOrder);
 
             const bids = publicOrders

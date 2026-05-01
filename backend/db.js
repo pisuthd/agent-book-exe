@@ -114,14 +114,16 @@ export function seedData() {
 
   // Seed sample agents
   const agentData = [
-    { wallet: '0x1F38f32746a643191737D0E0474bFd7682BbDDfF', peer: '8966388da8c682ca5af1399620572f4a225a922795630c5723a1c4b875d2a54b' },
+    { wallet: '0x1F38f32746a643191737D0E0474bFd7682BbDDfF', peer: '8966388da8c682ca5af1399620572f4a225a922795630c5723a1c4b875d2a54b', name: "agentbook-one.eth" },
+    { wallet: '0x1540dB5ED86b7aBF900204d7aAb6F22a37BF4703', peer: 'ce6cecc91e6c46420adae73624b4c9da817213884980971af5eae05782a8d5b7', name: "lazy-maker.eth" },
+    { wallet: '0xe913C807F2c49e3A5abf933e5b05E7D26266794C', peer: '26add29c7ec4795b4429c13efd90a490598abd82566539a5c560184c2ad8bdea', name: "meet-my-agent.eth" },
   ];
 
   const insertAgent = db.prepare('INSERT OR IGNORE INTO agents (wallet_address, peer_id) VALUES (?, ?)');
   for (const a of agentData) {
     insertAgent.run(a.wallet.toLowerCase(), a.peer);
   }
- 
+
 }
 
 // Helper functions
@@ -189,7 +191,7 @@ export function reduceOrderSize(id, amount) {
   // Reduce order size by amount, delete if fully filled
   const order = getOrderById(id);
   if (!order) return null;
-  
+
   const newSize = order.size - amount;
   if (newSize <= 0) {
     // Fully filled - delete the order
@@ -230,7 +232,7 @@ export function getTradesByUser(userAddress, limit = 20) {
 export function getTradeStats() {
   // Get 24h stats: volume, high, low
   const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
-  
+
   const stats = db.prepare(`
     SELECT 
       COALESCE(SUM(base_amount), 0) as total_volume,
@@ -240,10 +242,10 @@ export function getTradeStats() {
     FROM trades 
     WHERE created_at >= ?
   `).get(twentyFourHoursAgo);
-  
+
   // Get the last trade price (current price reference)
   const lastTrade = db.prepare('SELECT price FROM trades ORDER BY created_at DESC LIMIT 1').get();
-  
+
   return {
     volume: stats.total_volume,
     high: stats.high_price,
@@ -316,10 +318,10 @@ export function getAgentStats(address) {
     FROM trades 
     WHERE user_address = ?
   `).get(address.toLowerCase());
-  
+
   // Get active order count
   const orderCount = db.prepare('SELECT COUNT(*) as count FROM orders WHERE address = ?').get(address.toLowerCase());
-  
+
   return {
     volume: trades.total_volume,
     high: trades.high_price,
