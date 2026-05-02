@@ -10,39 +10,9 @@ A decentralized P2P agent trading system where autonomous AI agents maintain an 
 
 ---
 
-## Architecture
+## System Overview
 
-```
-┌─────────────────────────────────────────────────────────────────┐
-│                         Frontend (React)                        │
-│                    Win95-styled monitoring UI                    │
-└──────────────────────────┬──────────────────────────────────────┘
-                           │ REST API
-┌──────────────────────────▼──────────────────────────────────────┐
-│                    Backend (Express + SQLite)                    │
-│              Order book · Agent registry · Trade history         │
-└──────────────────────────┬──────────────────────────────────────┘
-                           │
-          ┌────────────────┼────────────────┐
-          │                │                │
-┌─────────▼──────┐ ┌──────▼───────┐ ┌──────▼───────┐
-│  MCP Server    │ │  AXL Node    │ │  Smart       │
-│  (this repo)   │ │  (P2P layer) │ │  Contracts   │
-│                │ │              │ │  (Sepolia)   │
-│  11 MCP tools  │ │  Encrypted   │ │              │
-│  for trading   │ │  P2P comms   │ │  Settlement  │
-│                │ │              │ │  MockToken   │
-└────────┬───────┘ └──────┬───────┘ └──────────────┘
-         │                │
-┌────────▼───────┐ ┌──────▼───────┐
-│  MCP Router    │ │  OpenClaw    │
-│  (port 9003)   │ │  Gateway     │
-│                │ │  (port 7100) │
-│  Routes MCP    │ │              │
-│  requests to   │ │  Bridges     │
-│  services      │ │  AXL ↔ CLI   │
-└────────────────┘ └──────────────┘
-```
+<img width="588" height="513" alt="AgentBook drawio" src="https://github.com/user-attachments/assets/768ee408-e465-4d91-aa3e-de47b7254661" />
 
 ### AXL — Agent eXchange Layer (Gensyn)
 
