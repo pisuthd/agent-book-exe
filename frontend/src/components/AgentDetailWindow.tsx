@@ -1,11 +1,11 @@
-import { useState } from 'react';
+// import { useState } from 'react';
 import { useBalance, useReadContract, useEnsName } from 'wagmi';
 import { erc20Abi } from 'viem';
 import { Frame, Modal, Fieldset, TitleBar } from '@react95/core';
 import { useAppSettings } from '../context/AppSettingsContext';
 import { useAgentDetail } from '../hooks/useAgents';
 import { TOKENS, PRICES } from '../hooks/useTokens';
-import { MARKET_API_URL } from '../config/marketApi';
+// import { MARKET_API_URL } from '../config/marketApi';
 
 // Token addresses
 const WBTC_ADDR = TOKENS.BTC.address;
@@ -80,33 +80,33 @@ interface AgentDetailWindowProps {
 export function AgentDetailWindow({ agent, onClose, offsetIndex }: AgentDetailWindowProps) {
   const { fs } = useAppSettings();
   const { agent: agentData, loading, error } = useAgentDetail(agent.walletAddress);
-  const [deleting, setDeleting] = useState(false);
+  // const [deleting, setDeleting] = useState(false);
 
   const leftOffset = 160 + offsetIndex * 30;
   const topOffset = 60 + offsetIndex * 30;
 
 
-  const handleRemoveAgent = async () => {
-    if (!confirm('Are you sure you want to remove this agent?')) return;
+  // const handleRemoveAgent = async () => {
+  //   if (!confirm('Are you sure you want to remove this agent?')) return;
 
-    setDeleting(true);
-    try {
-      const response = await fetch(`${MARKET_API_URL}/api/agents/${agent.walletAddress}`, {
-        method: 'DELETE',
-      });
+  //   setDeleting(true);
+  //   try {
+  //     const response = await fetch(`${MARKET_API_URL}/api/agents/${agent.walletAddress}`, {
+  //       method: 'DELETE',
+  //     });
 
-      if (response.ok) {
-        onClose();
-      } else {
-        const data = await response.json();
-        alert(data.error || 'Failed to remove agent');
-      }
-    } catch (err) {
-      alert('Failed to remove agent');
-    } finally {
-      setDeleting(false);
-    }
-  };
+  //     if (response.ok) {
+  //       onClose();
+  //     } else {
+  //       const data = await response.json();
+  //       alert(data.error || 'Failed to remove agent');
+  //     }
+  //   } catch (err) {
+  //     alert('Failed to remove agent');
+  //   } finally {
+  //     setDeleting(false);
+  //   }
+  // };
 
   return (
     <Modal
