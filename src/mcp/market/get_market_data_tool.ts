@@ -1,5 +1,5 @@
 import { type McpTool } from "../../types";
-import { type AgentManager } from "../../agent/agent-manager";
+import { type WalletAgent } from "../../agent/wallet";
 import { BACKEND_URL } from "../../config";
 
 const DEFAULT_PAIR = 'BTCUSDT';
@@ -24,17 +24,15 @@ interface MarketData {
 export const GetMarketDataTool: McpTool = {
     name: "get_market_data",
     description: "Get current market price and news for the BTCUSDT trading pair",
-    schema: {
-        // No input parameters - always uses default pair
-    },
-    handler: async (agentManager: AgentManager, input: Record<string, any>) => {
+    schema: {},
+    handler: async (_agent: WalletAgent, _input: Record<string, any>) => {
         try {
             const response = await fetch(`${BACKEND_URL}/api/pairs/${DEFAULT_PAIR}`);
-            
+
             if (!response.ok) {
                 throw new Error(`HTTP ${response.status}`);
             }
-            
+
             const data = await response.json() as MarketData;
 
             return {

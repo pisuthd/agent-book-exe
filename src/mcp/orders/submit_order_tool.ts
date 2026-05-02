@@ -1,11 +1,11 @@
 import { z } from "zod";
 import { type McpTool } from "../../types";
-import { type AgentManager } from "../../agent/agent-manager";
+import { type WalletAgent } from "../../agent/wallet";
 import { BACKEND_URL } from "../../config";
 
 export const SubmitOrderTool: McpTool = {
     name: "submit_order",
-    description: "Submit a new order (bid or ask) to the order book for a specific agent",
+    description: "Submit a new order (bid or ask) to the order book",
     schema: {
         side: z.string()
             .describe("Order side: 'bid' (buy) or 'ask' (sell)"),
@@ -13,13 +13,10 @@ export const SubmitOrderTool: McpTool = {
             .describe("Price in USDT per WBTC (e.g., '85000')"),
         size: z.string()
             .describe("Size in WBTC (e.g., '0.1')"),
-        agent_name: z.string().optional()
-            .describe("Agent name from NODE_IDS. Defaults to first agent if not provided.")
     },
-    handler: async (agentManager: AgentManager, input: Record<string, any>) => {
+    handler: async (agent: WalletAgent, input: Record<string, any>) => {
         try {
             const { side, price, size } = input;
-            const agent = agentManager.resolve(input.agent_name);
 
             if (!side || !price || !size) {
                 throw new Error('side, price, and size are required');
@@ -63,7 +60,6 @@ export const SubmitOrderTool: McpTool = {
             return {
                 status: "success",
                 message: `✅ Order submitted: ${side.toUpperCase()} ${size} WBTC @ $${price}`,
-                agent_name: agent.nodeName,
                 order: {
                     id: order.id,
                     side: order.side,

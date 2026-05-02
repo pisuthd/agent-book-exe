@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { type McpTool } from "../../types";
-import { type AgentManager } from "../../agent/agent-manager";
+import { type WalletAgent } from "../../agent/wallet";
 import { P2P_NODE_URL } from "../../config";
 
 interface P2PRequest {
@@ -36,13 +36,10 @@ export const SendMessageTool: McpTool = {
             .describe("The target agent's ENS name (e.g., 'agentbook-one.eth')"),
         message: z.string()
             .describe("The message to send to the target agent"),
-        agent_name: z.string().optional()
-            .describe("Your agent name from NODE_IDS. Defaults to first agent if not provided.")
     },
-    handler: async (agentManager: AgentManager, input: Record<string, any>) => {
+    handler: async (agent: WalletAgent, input: Record<string, any>) => {
         try {
             const { peer_id: targetPeerId, agent: targetAgent, message } = input;
-            const agent = agentManager.resolve(input.agent_name);
             const address = agent.address;
 
             // Try to resolve ENS name
@@ -94,7 +91,6 @@ export const SendMessageTool: McpTool = {
             return {
                 status: "success",
                 from: myName,
-                from_agent_name: agent.nodeName,
                 to: targetAgent,
                 target_peer_id: targetPeerId,
                 message: prefixedMessage,

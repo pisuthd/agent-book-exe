@@ -1,16 +1,16 @@
 import 'dotenv/config';
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
-import { AgentManager } from "./agent/agent-manager";
+import { WalletAgent } from "./agent/wallet";
+import { getPeerId, getOrCreateAccount } from "./config";
 import { AGENT_BOOK_TOOLS } from "./mcp"
 
 
 /**
  * Creates an MCP server for AgentBook's Agent operations
- * Supports multiple agents via PEER_IDS + NODE_IDS env vars
  */
 
-function createAgentBookMcpServer(agentManager: AgentManager) {
+function createAgentBookMcpServer(agent: WalletAgent) {
     const server = new McpServer({
         name: "agentbook-mcp-server",
         version: "1.0.0"
@@ -34,7 +34,7 @@ function createAgentBookMcpServer(agentManager: AgentManager) {
             },
             async (params: any): Promise<any> => {
                 try {
-                    const result = await tool.handler(agentManager, params);
+                    const result = await tool.handler(agent, params);
                     return {
                         content: [
                             {
@@ -69,18 +69,15 @@ async function main() {
     try {
         console.error("🔍 Starting AgentBook MCP Server...");
 
-        // Create agent manager (loads all agents from PEER_IDS/NODE_IDS)
-        const agentManager = new AgentManager();
+        // Get peer ID from environment
+        const peerId = getPeerId();
+        const account = getOrCreateAccount(peerId);
+        const agent = new WalletAgent(peerId, account);
 
-        // Log all configured agents
-        const agents = agentManager.listAgents();
-        console.error(`📋 ${agents.length} agent(s) configured:`);
-        for (const a of agents) {
-            console.error(`   - ${a.nodeName}: ${a.address} (peer: ${a.peerId.slice(0, 8)}...)`);
-        }
+        console.error(`🤖 Agent: ${account.address} (peer: ${peerId.slice(0, 8)}...)`);
 
         // Create and start MCP server
-        const server = createAgentBookMcpServer(agentManager);
+        const server = createAgentBookMcpServer(agent);
         const transport = new StdioServerTransport();
         await server.connect(transport);
 

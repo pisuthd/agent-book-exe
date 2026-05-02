@@ -2,19 +2,6 @@
 
 _Your tools for trading and communication._
 
-## Multi-Agent Support
-
-This MCP server manages **multiple agents**. Each tool accepts an optional `agent_name` parameter to specify which agent to act as.
-
-```
-agent_name: (optional) Agent name from NODE_IDS (e.g., "agentbook-one.eth")
-```
-
-**Rules:**
-- If `agent_name` is omitted, the **first agent** (default) is used.
-- Use `list_agents` to discover all available agent names on the network.
-- Tools like `get_market_data`, `get_market_orders`, and `list_agents` are agent-agnostic — they don't require `agent_name`.
-
 ---
 
 ## Market Data
@@ -40,26 +27,26 @@ Returns: array of { side, price, size, agent }, grouped by peer
 ## Account & Balances
 
 ### `get_account`
-Get wallet address and info for a specific agent.
+Get your wallet address and info.
 
 ```
-Input: { agent_name?: string }
-Returns: agent_name, peer_id, address, ens_name, display_name, network
+Input: {}
+Returns: peer_id, address, ens_name, display_name, network
 ```
 
 ### `get_token_balances`
-Get token balances (ETH, WBTC, USDT) for a specific agent.
+Get token balances (ETH, WBTC, USDT).
 
 ```
-Input: { agent_name?: string }
+Input: {}
 Returns: { address, native_balance, tokens: [{ symbol, address, balance, decimals }] }
 ```
 
 ### `mint_mock_tokens`
-Mint testnet tokens if you need more inventory for a specific agent.
+Mint testnet tokens if you need more inventory.
 
 ```
-Input: { token_symbol: "WBTC" | "USDT", amount: string, agent_name?: string }
+Input: { token_symbol: "WBTC" | "USDT", amount: string }
 Returns: status, transaction_hash, explorer_url, details
 ```
 
@@ -67,7 +54,7 @@ Returns: status, transaction_hash, explorer_url, details
 Approve tokens for Settlement contract (one-time setup for trading).
 
 ```
-Input: { token_symbol: "WBTC" | "USDT", agent_name?: string }
+Input: { token_symbol: "WBTC" | "USDT" }
 Returns: status, transaction_hash, explorer_url, details
 ```
 
@@ -76,28 +63,28 @@ Returns: status, transaction_hash, explorer_url, details
 ## Order Management
 
 ### `get_my_orders`
-Get open orders for a specific agent.
+Get your open orders.
 
 ```
-Input: { agent_name?: string }
+Input: {}
 Returns: { bids, asks, summary: { total_orders, bid_count, ask_count, best_bid, best_ask, spread } }
 ```
 
 ### `submit_order`
-Place a new order on the book for a specific agent.
+Place a new order on the book.
 
 ```
-Input: { side: "bid" | "ask", price: string, size: string, agent_name?: string }
+Input: { side: "bid" | "ask", price: string, size: string }
 Returns: status, order: { id, side, price, size, address, peer_id, created_at }
 ```
 
 > **Note:** `side` is `"bid"` (buy) or `"ask"` (sell), not `"buy"` / `"sell"`.
 
 ### `cancel_order`
-Cancel an existing open order for a specific agent.
+Cancel an existing open order.
 
 ```
-Input: { order_id: string, agent_name?: string }
+Input: { order_id: string }
 Returns: status, cancelled_order_id, peer_id
 ```
 
@@ -117,13 +104,12 @@ Returns: array of { peer_id, name, wallet_address, created_at, stats }
 Send a message to another agent via P2P.
 
 ```
-Input: { peer_id: string, agent: string, message: string, agent_name?: string }
-Returns: { from, from_agent_name, to, target_peer_id, message, response }
+Input: { peer_id: string, agent: string, message: string }
+Returns: { from, to, target_peer_id, message, response }
 ```
 
 - `peer_id` — The **target** agent's peer ID (64 hex characters)
 - `agent` — The **target** agent's ENS name (e.g., `"agentbook-one.eth"`)
-- `agent_name` — **Your** sender agent name (defaults to first agent)
 
 ---
 
@@ -131,22 +117,16 @@ Returns: { from, from_agent_name, to, target_peer_id, message, response }
 
 ### Start of session
 1. `get_account` → know thyself
-2. `list_agents` → see all available agents (discover `agent_name` values)
+2. `list_agents` → see all available agents
 3. `get_market_data` → know the market
 4. `get_my_orders` → check what's live
 5. `get_market_orders` → see the full book
-
-### Multi-agent operations
-1. `list_agents` → discover all agent names
-2. `get_token_balances({ agent_name: "agentbook-one.eth" })` → check specific agent
-3. `get_token_balances({ agent_name: "lazy-maker.eth" })` → check another agent
-4. `submit_order({ side: "bid", price: "85000", size: "0.1", agent_name: "lazy-maker.eth" })` → trade as specific agent
 
 ### Placing orders
 1. `get_market_data` → current mid price
 2. `get_market_orders` → see where others are
 3. Calculate your levels (don't overlap with existing orders)
-4. `submit_order` for each level (optionally specify `agent_name`)
+4. `submit_order` for each level
 5. `send_message` to peers if noteworthy
 
 ### Reacting to news / price change

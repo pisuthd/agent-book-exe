@@ -28,66 +28,19 @@ function isValidPeerId(peerId: string): boolean {
     return /^[a-fA-F0-9]{64}$/.test(peerId);
 }
 
-// Agent configuration
-export interface AgentConfig {
-    peerId: string;
-    nodeName: string;
+// Get PEER_ID from environment
+export function getPeerId(): string {
+    const peerId = process.env.PEER_ID;
+    if (!peerId) {
+        throw new Error('PEER_ID environment variable is required');
+    }
+    if (!isValidPeerId(peerId)) {
+        throw new Error('PEER_ID must be exactly 64 hexadecimal characters (no 0x prefix)');
+    }
+    return peerId;
 }
 
-// Parse PEER_IDS from environment (comma-separated)
-export function parsePeerIds(): string[] {
-    const raw = process.env.PEER_IDS;
-    if (!raw) {
-        // Fallback to single PEER_ID for backwards compatibility
-        const single = process.env.PEER_ID;
-        if (single) {
-            if (!isValidPeerId(single)) {
-                throw new Error('PEER_ID must be exactly 64 hexadecimal characters (no 0x prefix)');
-            }
-            return [single];
-        }
-        throw new Error('PEER_IDS (or PEER_ID) environment variable is required');
-    }
-
-    const ids = raw.split(',').map(s => s.trim()).filter(Boolean);
-    if (ids.length === 0) {
-        throw new Error('PEER_IDS must contain at least one peer ID');
-    }
-
-    for (const id of ids) {
-        if (!isValidPeerId(id)) {
-            throw new Error(`Invalid PEER_ID '${id.slice(0, 8)}...' — must be exactly 64 hexadecimal characters (no 0x prefix)`);
-        }
-    }
-
-    return ids;
-}
-
-// Parse NODE_IDS from environment (comma-separated human-friendly names)
-export function parseNodeIds(): string[] {
-    const raw = process.env.NODE_IDS;
-    if (!raw) {
-        return []; // Will default to peer_id-based names
-    }
-    return raw.split(',').map(s => s.trim()).filter(Boolean);
-}
-
-// Build agent configs by zipping PEER_IDS and NODE_IDS
-export function buildAgentConfigs(): AgentConfig[] {
-    const peerIds = parsePeerIds();
-    const nodeIds = parseNodeIds();
-
-    if (nodeIds.length > 0 && nodeIds.length !== peerIds.length) {
-        throw new Error(`NODE_IDS count (${nodeIds.length}) must match PEER_IDS count (${peerIds.length})`);
-    }
-
-    return peerIds.map((peerId, i) => ({
-        peerId,
-        nodeName: nodeIds[i] || `agent-${peerId.slice(0, 8)}`,
-    }));
-}
-
-// Create or retrieve account for a peer from registry
+// Create or retrieve account for peer from registry
 export function getOrCreateAccount(peerId: string): Account {
     let privateKey = getPeerPrivateKey(peerId);
 

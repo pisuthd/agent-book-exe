@@ -1,18 +1,13 @@
-import { z } from "zod";
 import { type McpTool } from "../../types";
-import { type AgentManager } from "../../agent/agent-manager";
+import { type WalletAgent } from "../../agent/wallet";
 import { BACKEND_URL } from "../../config";
 
 export const GetOrdersTool: McpTool = {
     name: "get_my_orders",
-    description: "Get all orders for a specific agent (bids and asks)",
-    schema: {
-        agent_name: z.string().optional()
-            .describe("Agent name from NODE_IDS. Defaults to first agent if not provided.")
-    },
-    handler: async (agentManager: AgentManager, input: Record<string, any>) => {
+    description: "Get all orders for the agent (bids and asks)",
+    schema: {},
+    handler: async (agent: WalletAgent, _input: Record<string, any>) => {
         try {
-            const agent = agentManager.resolve(input.agent_name);
             const peerId = agent.peerId;
 
             // Get orders from backend by wallet address
@@ -27,7 +22,6 @@ export const GetOrdersTool: McpTool = {
 
             return {
                 status: "success",
-                agent_name: agent.nodeName,
                 peer_id: peerId,
                 address: agent.address,
                 bids,

@@ -1,17 +1,13 @@
 import { z } from "zod";
 import { type McpTool } from "../../types";
-import { type AgentManager } from "../../agent/agent-manager";
+import { type WalletAgent } from "../../agent/wallet";
 
 export const GetAccountTool: McpTool = {
     name: "get_account",
-    description: "Get account information for a specific agent (or default agent). Returns peer ID, wallet address, and ENS name.",
-    schema: {
-        agent_name: z.string().optional()
-            .describe("Agent name from NODE_IDS (e.g., 'agentbook-one.eth'). Defaults to first agent if not provided.")
-    },
-    handler: async (agentManager: AgentManager, input: Record<string, any>) => {
+    description: "Get account information. Returns peer ID, wallet address, and ENS name.",
+    schema: {},
+    handler: async (agent: WalletAgent, _input: Record<string, any>) => {
         try {
-            const agent = agentManager.resolve(input.agent_name);
             const peerId = agent.peerId;
             const address = agent.address;
 
@@ -20,13 +16,11 @@ export const GetAccountTool: McpTool = {
             try {
                 ensName = await agent.publicClient.getEnsName({ address });
             } catch {
-                // ENS resolution failed
                 ensName = null;
             }
 
             return {
                 status: "success",
-                agent_name: agent.nodeName,
                 peer_id: peerId,
                 address: address,
                 ens_name: ensName,

@@ -1,10 +1,10 @@
-import { AgentManager } from './agent/agent-manager';
+import { WalletAgent } from './agent/wallet';
 
 export interface McpTool {
     name: string;
     description: string;
     schema: Record<string, any>;
-    handler: (agentManager: AgentManager, input: Record<string, any>) => Promise<any>;
+    handler: (agent: WalletAgent, input: Record<string, any>) => Promise<any>;
 }
 
 export interface TokenBalance {

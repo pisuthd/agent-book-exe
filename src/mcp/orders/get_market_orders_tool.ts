@@ -1,5 +1,5 @@
 import { type McpTool } from "../../types";
-import { type AgentManager } from "../../agent/agent-manager";
+import { type WalletAgent } from "../../agent/wallet";
 import { BACKEND_URL } from "../../config";
 
 interface Order {
@@ -13,7 +13,6 @@ interface Order {
     created_at: string;
 }
 
-// Public order
 interface PublicOrder {
     id: string;
     address: string;
@@ -39,13 +38,9 @@ function toPublicOrder(order: Order): PublicOrder {
 export const GetMarketOrdersTool: McpTool = {
     name: "get_market_orders",
     description: "Get all orders across the entire system (all peers). Returns the full order book with bids and asks from all agents.",
-    schema: {
-        // No input parameters needed - shows all peers' orders
-    },
-    handler: async (agentManager: AgentManager, input: Record<string, any>) => {
+    schema: {},
+    handler: async (_agent: WalletAgent, _input: Record<string, any>) => {
         try {
-            const agent = agentManager.getDefault();
-
             // Get all orders from backend (system-wide)
             const response = await fetch(`${BACKEND_URL}/api/orders`);
             if (!response.ok) {

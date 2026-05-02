@@ -16,14 +16,12 @@ export const TOKEN_CONFIGS = {
 
 export class WalletAgent {
     public readonly peerId: string;
-    public readonly nodeName: string;
     public readonly walletClient: WalletClient;
     public readonly publicClient: PublicClient;
     public readonly account: Account;
 
-    constructor(peerId: string, nodeName: string, account: Account) {
+    constructor(peerId: string, account: Account) {
         this.peerId = peerId;
-        this.nodeName = nodeName;
         this.account = account;
         this.publicClient = publicClient;
         this.walletClient = createWalletClientForAccount(account);

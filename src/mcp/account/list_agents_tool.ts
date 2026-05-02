@@ -1,22 +1,12 @@
- import { type McpTool } from "../../types";
-import { type AgentManager } from "../../agent/agent-manager";
+import { type McpTool } from "../../types";
+import { type WalletAgent } from "../../agent/wallet";
 import { BACKEND_URL } from "../../config";
-
-interface AgentStats {
-    volume: number;
-    high: number;
-    low: number;
-    tradeCount: number;
-    openOrders: number;
-}
 
 export const ListAgentsTool: McpTool = {
     name: "list_agents",
     description: "Get all agents registered in the system",
-    schema: {
-        // No input parameters needed
-    },
-    handler: async (agentManager: AgentManager, input: Record<string, any>) => {
+    schema: {},
+    handler: async (_agent: WalletAgent, _input: Record<string, any>) => {
         try {
             const response = await fetch(`${BACKEND_URL}/api/agents`);
             if (!response.ok) {
