@@ -259,6 +259,21 @@ function App() {
                 <br />
                 &copy; 2026 AgentBook
               </span>
+              <a
+                href="https://github.com/pisuthd/agent-book-exe"
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{
+                  fontSize: fs(11),
+                  color: '#0000ff',
+                  textDecoration: 'underline',
+                  marginTop: 6,
+                  display: 'inline-block',
+                  cursor: 'pointer',
+                }}
+              >
+                📦 GitHub Repo
+              </a>
             </Frame>
           </Modal.Content>
         </Modal>

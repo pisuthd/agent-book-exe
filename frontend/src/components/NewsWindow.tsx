@@ -37,6 +37,18 @@ export function NewsWindow({ onClose }: NewsWindowProps) {
   const [editingPrice, setEditingPrice] = useState(false);
   const [priceInput, setPriceInput] = useState('');
   const [priceDirection, setPriceDirection] = useState<'up' | 'down' | 'idle'>('idle');
+  const [copied, setCopied] = useState(false);
+
+  const curlCommand = `curl -X POST http://127.0.0.1:9002/mcp/8966388da8c682ca5af1399620572f4a225a922795630c5723a1c4b875d2a54b/openclaw-gateway \\
+  -H "Content-Type: application/json" \\
+  -d '{"jsonrpc":"2.0","method":"tools/call","id":1,"params":{"agent":"agentbook-one.eth","message":"market has shifted, try check and tell other agents"}}'`;
+
+  const handleCopy = () => {
+    navigator.clipboard.writeText(curlCommand).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    });
+  };
 
   const handlePublish = async () => {
     if (!headline.trim()) return;
@@ -152,6 +164,57 @@ export function NewsWindow({ onClose }: NewsWindowProps) {
           </Frame>
         )}
 
+        {/* MVP Info Banner */}
+        <Frame style={{ 
+          padding: '6px 8px', 
+          background: '#ffffcc', 
+          border: '1px solid #cccc00',
+          marginBottom: 10,
+        }}>
+          <Frame style={{ fontSize: fs(11), fontWeight: 'bold', color: '#cc8800', marginBottom: 4 }}>
+            💡 Try it
+          </Frame>
+          <Frame style={{ fontSize: fs(11), lineHeight: 1.3, marginBottom: 6 }}>
+            We allow anyone to manipulate external news and price for agents to react. Please wait a moment for its heartbeat to pick up, or curl one of the AXL public nodes:
+          </Frame>
+          <Frame style={{
+            background: '#1a1a2e',
+            padding: '6px 8px',
+            position: 'relative',
+            borderTop: '2px solid #404040',
+            borderLeft: '2px solid #404040',
+            borderRight: '2px solid white',
+            borderBottom: '2px solid white',
+          }}>
+            <pre style={{
+              margin: 0,
+              fontSize: fs(9),
+              color: '#00ff88',
+              fontFamily: 'monospace',
+              whiteSpace: 'pre-wrap',
+              wordBreak: 'break-all',
+              lineHeight: 1.4,
+            }}>
+{curlCommand}
+            </pre>
+            <Button
+              onClick={handleCopy}
+              style={{
+                position: 'absolute',
+                top: 4,
+                right: 4,
+                fontSize: fs(9),
+                padding: '1px 6px',
+                minWidth: 'auto',
+                background: copied ? '#00aa00' : '#808080',
+                color: 'white',
+              }}
+            >
+              {copied ? '✓ Copied' : 'Copy'}
+            </Button>
+          </Frame>
+        </Frame>
+
         {/* Create News Event */}
         <Fieldset legend="Publish News" style={{ marginBottom: 10 }}>
           <Frame style={{ marginBottom: 6 }}>
@@ -191,6 +254,7 @@ export function NewsWindow({ onClose }: NewsWindowProps) {
               <Input value={magnitude} onChange={(e) => setMagnitude(e.target.value)} style={{ width: 80 }} />
             </Frame>
           </Frame>
+ 
 
           <Button 
             style={{ fontSize: fs(11), fontWeight: 'bold' }}

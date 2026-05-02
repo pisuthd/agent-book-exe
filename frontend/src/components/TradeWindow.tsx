@@ -163,7 +163,7 @@ export function TradeWindow({ onClose }: TradeWindowProps) {
         <Frame style={{ flex: 1, display: 'flex', overflow: 'hidden' }}>
           
           {/* LEFT COLUMN  */}
-          <Frame style={{ width: 200, flexDirection: 'column', borderRight: '2px solid', borderColor: '#808080', padding: 8 }}>
+          <Frame style={{ width: 340, flexDirection: 'column', borderRight: '2px solid', borderColor: '#808080', padding: 8 }}>
             <Frame style={{
               padding: '6px 8px',
               background: '#000080',
@@ -283,10 +283,10 @@ export function TradeWindow({ onClose }: TradeWindowProps) {
                   <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: fs(11) }}>
                     <thead>
                       <tr style={{ background: '#c0c0c0' }}>
-                        <th style={{ textAlign: 'right', padding: '4px 6px' }}>Price</th>
-                        <th style={{ textAlign: 'right', padding: '4px 6px' }}>Size</th>
-                        <th style={{ textAlign: 'right', padding: '4px 6px' }}>Total</th>
-                        <th style={{ textAlign: 'left', padding: '4px 6px' }}>Agents</th>
+                        <th style={{ textAlign: 'right', width :"25%", padding: '4px 6px' }}>Price</th>
+                        <th style={{ textAlign: 'right', width :"25%", padding: '4px 6px' }}>Size (BTC)</th>
+                        <th style={{ textAlign: 'right', width :"25%", padding: '4px 6px' }}>Total (USDT)</th>
+                        <th style={{ textAlign: 'left', width :"25%", padding: '4px 6px' }}>Agents</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -364,10 +364,10 @@ export function TradeWindow({ onClose }: TradeWindowProps) {
                   <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: fs(11) }}>
                     <thead>
                       <tr style={{ background: '#c0c0c0' }}>
-                        <th style={{ textAlign: 'right', padding: '4px 6px' }}>Price</th>
-                        <th style={{ textAlign: 'right', padding: '4px 6px' }}>Size</th>
-                        <th style={{ textAlign: 'right', padding: '4px 6px' }}>Total</th>
-                        <th style={{ textAlign: 'left', padding: '4px 6px' }}>Agents</th>
+                        <th style={{ textAlign: 'right', width :"25%", padding: '4px 6px' }}>Price</th>
+                        <th style={{ textAlign: 'right', width :"25%", padding: '4px 6px' }}>Size (BTC)</th>
+                        <th style={{ textAlign: 'right', width :"25%", padding: '4px 6px' }}>Total (USDT)</th>
+                        <th style={{ textAlign: 'left', width :"25%", padding: '4px 6px' }}>Agents</th>
                       </tr>
                     </thead>
                     <tbody>

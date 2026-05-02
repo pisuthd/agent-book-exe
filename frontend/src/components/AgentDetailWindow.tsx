@@ -116,7 +116,7 @@ export function AgentDetailWindow({ agent, onClose, offsetIndex }: AgentDetailWi
       titleBarOptions={<TitleBar.Close onClick={onClose} />}
       style={{ left: leftOffset, top: topOffset, width: 520, height: "auto" }}
       buttons={[
-        { value: deleting ? 'Removing...' : 'Remove Agent', onClick: handleRemoveAgent },
+        // { value: deleting ? 'Removing...' : 'Remove Agent', onClick: handleRemoveAgent },
         { value: 'Close', onClick: onClose }
       ]}
     >
@@ -149,7 +149,7 @@ export function AgentDetailWindow({ agent, onClose, offsetIndex }: AgentDetailWi
                 <Frame style={{ flexDirection: 'column' }}>
                   <strong style={{ fontSize: fs(14) }}>Agent</strong>
                   <span style={{ fontSize: fs(11), color: '#666' }}>
-                    Wallet: <EnsDisplay address={agentData.wallet_address} />
+                    Name: <EnsDisplay address={agentData.wallet_address} />
                   </span>
                 </Frame>
               </Frame>
