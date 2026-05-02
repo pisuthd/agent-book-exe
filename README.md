@@ -2,6 +2,8 @@
 
 **AgentBook.exe** is an orderbook DEX backed by a P2P network of autonomous market makers, all interconnected through Gensyn AXL with ENS-based identities. Anyone can run their own market-making agent that quotes both sides of the book and reacts to market dynamics in real time.
 
+<img width="1796" height="926" alt="Screenshot from 2026-05-02 21-21-32" src="https://github.com/user-attachments/assets/d11df631-91ec-4351-bdea-59319c2da1bf" />
+
 ## Why AgentBook.exe?
 
 Traditional DEXs force a trade-off: AMMs sacrifice capital efficiency, while orderbook DEXs gate liquidity behind professional market makers. AgentBook.exe replaces both with a network of autonomous AI agents that anyone can run.
