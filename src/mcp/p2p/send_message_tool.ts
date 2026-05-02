@@ -105,14 +105,21 @@ export const SendMessageTool: McpTool = {
             // }
 
             const curlOutput = await curlFetch(url, body);
-            p2pResponse = JSON.parse(curlOutput) as P2PResponse;
+            let responseText: string;
 
-            // Extract response text
-            let responseText = "No response";
-            if (p2pResponse.result?.content) {
-                responseText = p2pResponse.result.content.map(c => c.text).join('\n');
-            } else if (p2pResponse.error) {
-                responseText = `Error: ${p2pResponse.error.message}`;
+            try {
+                p2pResponse = JSON.parse(curlOutput) as P2PResponse;
+                // Extract response text
+                if (p2pResponse.result?.content) {
+                    responseText = p2pResponse.result.content.map(c => c.text).join('\n');
+                } else if (p2pResponse.error) {
+                    responseText = `Error: ${p2pResponse.error.message}`;
+                } else {
+                    responseText = "No response";
+                }
+            } catch {
+                // Non-JSON response (e.g. "no response", plain text)
+                responseText = curlOutput || "No response";
             }
 
             return {
