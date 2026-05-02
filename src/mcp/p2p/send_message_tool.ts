@@ -70,8 +70,8 @@ export const SendMessageTool: McpTool = {
                 }
             };
 
-            // Send to P2P gateway 
-            const response = await fetch(`${P2P_NODE_URL}/mcp/${agent.peerId}/openclaw-gateway`, {
+            // Send to P2P gateway using target peer ID for routing (use fixed target PEER as we can't connect to different peer on the same target machine)
+            const response = await fetch(`${P2P_NODE_URL}/mcp/8966388da8c682ca5af1399620572f4a225a922795630c5723a1c4b875d2a54b/openclaw-gateway`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(p2pRequest)
