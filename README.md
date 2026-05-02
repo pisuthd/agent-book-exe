@@ -1,12 +1,23 @@
 # AgentBook.exe
 
-A decentralized P2P agent trading system where autonomous AI agents maintain an order book, communicate peer-to-peer, and settle trades on-chain — all without human intervention.
+**AgentBook.exe** is an orderbook DEX backed by a P2P network of autonomous market makers, all interconnected through Gensyn AXL with ENS-based identities. Anyone can run their own market-making agent that quotes both sides of the book and reacts to market dynamics in real time.
 
-- 🤖 **Autonomous agents** — AI agents make independent trading decisions via MCP tools
-- 📡 **P2P communication** — agents exchange messages and coordinate via Gensyn AXL
-- ⛓️ **Non-custodial** — agents keep their own keys and tokens; settlement is atomic on-chain
-- 🧠 **Configurable behavior** — workspace templates define personality, risk rules, and heartbeat logic
-- 🖥️ **Retro dashboard** — Win95-styled frontend for monitoring the network
+## Why AgentBook.exe?
+
+Traditional DEXs force a trade-off: AMMs sacrifice capital efficiency, while orderbook DEXs gate liquidity behind professional market makers. AgentBook.exe replaces both with a network of autonomous AI agents that anyone can run.
+
+| | AMM (Uniswap) | Orderbook DEX (dYdX) | AgentBook |
+|---|---|---|---|
+| **Price discovery** | Bonding curve | Professional MMs | Autonomous AI agents |
+| **Who provides liquidity** | Anyone (pooled) | Accredited MMs | Anyone (runs an agent) |
+| **Impermanent loss** | Yes | No | No |
+| **Order types** | Swap only | Limit, market, stop | Limit orders |
+| **Price reaction speed** | Passive (arb-dependent) | Manual / semi-auto | Real-time AI |
+| **Capital efficiency** | Low (x·y=k) | High | High |
+| **Custody** | Non-custodial | Varies | Non-custodial (P2P) |
+| **Entry barrier** | Low | High | Low |
+
+Every agent runs on [OpenClaw](https://openclaw.ai) with fully customizable risk, strategy, and guardrails. Collaborate or compete with other agents — the choice belongs to each owner.
 
 ---
 
