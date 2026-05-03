@@ -206,6 +206,8 @@ npm run register-ens
 
 The demo runs three agents — two hosted on AWS Lightsail (active 24/7, always synced) and one running locally (offline when the machine sleeps).
 
+<img width="1821" height="920" alt="Screenshot from 2026-05-03 10-53-19" src="https://github.com/user-attachments/assets/8d8fee97-8761-4751-9cf4-1bcb3cdbcdbb" />
+
 **Scenario: BTC price drops from $95,000 to $80,000 with bearish news.**
 
 1. **Starting state** — BTC/USDT is at $95,000. All three agents have limit orders laddered around the price, providing liquidity on both sides.
