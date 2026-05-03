@@ -53,7 +53,15 @@ curl -X POST http://127.0.0.1:9002/mcp/8966388da8c682ca5af1399620572f4a225a92279
   -d '{"jsonrpc":"2.0","method":"tools/call","id":1,"params":{"agent":"agentbook-one.eth","message":"market has shifted, try check and tell other agents"}}'
 ```
 
-Data flow: `Caller → AXL node (localhost:9002) → P2P encrypted tunnel → target peer's MCP Router → OpenClaw Gateway → Agent processes and responds`
+#### Message Flow
+
+When an agent sends a message to a peer on the network, the data travels through these steps:
+
+1. **Caller** — initiates an HTTP request to the local AXL node (`localhost:9002`) with the target peer ID and MCP method
+2. **AXL node** — encrypts the payload and routes it through the P2P network to the target peer
+3. **MCP Router** — receives the message at the target peer (port `9003`) and determines which MCP service handles it
+4. **OpenClaw Gateway** — receives the routed message and passes it into the OpenClaw agent runtime
+5. **Agent processes** — the agent reads the message, calls MCP tools as needed (check market, adjust orders, reply), and the response travels back the same path
 
 ### ENS — Ethereum Name Service
 
@@ -192,6 +200,25 @@ npm run register-ens
 
 ---
 
+## Demo
+
+> **Watch the demo**: [ETHGlobal Showcase](https://ethglobal.com/showcase/agentbook-exe-iqbta)
+
+The demo runs three agents — two hosted on AWS Lightsail (active 24/7, always synced) and one running locally (offline when the machine sleeps).
+
+**Scenario: BTC price drops from $95,000 to $80,000 with bearish news.**
+
+1. **Starting state** — BTC/USDT is at $95,000. All three agents have limit orders laddered around the price, providing liquidity on both sides.
+2. **Market shock** — We update the BTC price to $80,000 and add negative news (bearish sentiment) via the backend.
+3. **Agent 1 detects the shift** — We open Agent 1's OpenClaw dashboard and prompt it to check market data. It fetches the updated price and news, then immediately alerts Agent 2 via the P2P network.
+4. **Agent 2 reacts** — We switch to Agent 2's dashboard and see the incoming message. Agent 2 cancels all its stale $95,000 orders and places a new ladder around $80,000.
+5. **Agent 1 coordinates** — Agent 1 also removes its old orders and coordinates with Agent 2 to fill remaining gaps in the $80,000 order book.
+6. **Agent 3 is out of sync** — Running on a local machine, Agent 3 missed the P2P messages. We manually prompt it to check market data and update its orders.
+
+Once stabilized, the order book shows asks stacked above $80,000 and bids below — a fully agent-driven market at the new price. A user then places a limit order and settles on-chain directly with agent wallets.
+
+---
+
 ## MCP Tools Reference
 
 The MCP server (`src/`) is a TypeScript server built with the [Model Context Protocol](https://modelcontextprotocol.io/) SDK. It's the interface between OpenClaw agents and the trading system — every action an agent takes (checking balances, placing orders, sending messages to peers) goes through these MCP tools.
@@ -248,7 +275,15 @@ Non-custodial atomic settlement contract. Both users and agents approve the Sett
 5. Validates fill amounts are within min/max bounds
 6. Emits `TradeExecuted` and `AgentFillRecorded` events
 
+---
+
+## Conclusion
+
+AgentBook.exe demonstrates that decentralized exchanges don't need centralized market makers — they need autonomous agents connected through open P2P infrastructure. By weaving together AXL's encrypted network, ENS identities, and OpenClaw's agent runtime, the system produces live, responsive order books where anyone can be the liquidity provider.
+
+Built on Gensyn AXL with atomic on-chain settlement, the result is a non-custodial DEX where AI agents replace traditional market infrastructure — making liquidity open, composable, and always on.
+
 ## License
 
-MIT © 2025 AgentBook.exe
+MIT © 2026 AgentBook.exe
 
